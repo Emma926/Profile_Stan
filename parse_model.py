@@ -1,14 +1,13 @@
-import json
 # caveat: variables are dependent on the index variables 
 # real beta[3]; there are 3 betas here, create integers as "variables"
-
-# TODO: indexing arrays with arithmetic ops
+# ignore the arithmetic operations within []
 # examples: eps[2:nyear] = eps2[1:nyear - 1], or N_est[t + 1] = N_est[t] * lambda[t];
 
-modelfile = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.05/ssm.stan'
+import json
+modelfile = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.04/GLMM_Poisson.stan'
 model = open(modelfile,'r')
 write = 0
-check = 0
+check = 1
 
 data_type = ['real', 'int', 'vector', 'row_vector', 'matrix']
 
@@ -44,16 +43,32 @@ def preprocess(model):
       continue
     if '//' in line:
       line = line.split('//')[0].strip(' ')  
-    if 'real' in line \
-    or 'int' in line \
-    or 'vector' in line \
-    or 'row_vector' in line \
-    or 'matrix' in line \
-    or 'for' in line \
-    or '{' in line \
-    or '}' in line \
-    or '=' in line \
-    or '~' in line:
+
+    newline = " ".join(line.strip('\n').strip(' ').replace(';', ' '). \
+    replace(",", " ").replace(":", " "). \
+    replace("[", " ").replace("]", " "). \
+    replace('+',' '). \
+    replace('.*',' '). \
+    replace('<-', ' ').\
+    replace('-', ' '). \
+    replace('/', ' '). \
+    replace('*',' '). \
+    replace('(', ' '). \
+    replace(')', ' '). \
+    replace('\'',' '). \
+    replace('<',' ').replace('>', ' ').split()).split(' ')
+    print newline
+
+    if 'real' in newline \
+    or 'int' in newline \
+    or 'vector' in newline \
+    or 'row_vector' in newline \
+    or 'matrix' in newline \
+    or 'for' in newline \
+    or '{' in newline \
+    or '}' in newline \
+    or '=' in newline \
+    or '~' in newline:
       lines.append(line)
 
     else:
@@ -62,20 +77,25 @@ def preprocess(model):
   return lines
 
 lines = preprocess(model)
+#for line in lines:
+#  print line
 
 for line in lines:
+  # ignore whatever can appear within []
   newline = " ".join(line.strip('\n').strip(' ').replace(';', ' '). \
   replace(", ", ","). \
-  replace('+',' ').replace('.*',' '). \
-  replace('<-', ' ').replace('-', ' ').replace('*',' '). \
-  replace('(', ' ').replace(')', ' '). \
+  replace(' + ','+'). \
+  replace('.*',' '). \
+  replace('<-', ' ').\
+  replace(' - ', '-'). \
+  replace(' / ', '/'). \
+  replace(' * ','*'). \
+  replace('(', ' '). \
+  replace(')', ' '). \
   replace('~', ' ').\
-  replace(':',' '). \
   replace('\'',' '). \
-  replace('<',' ').replace('>', ' ').split())
-
-  newlinecat = " ".join(newline.replace('/',' ').split())
-  newline = " ".join(newline.replace('/',' ').split()).split(' ')
+  replace('<',' ').replace('>', ' ').split()).split(' ')
+  #newline = " ".join(newline.replace('/',' ').split()).split(' ')
   
 
   if 'transformed' == newline[0] and 'parameters' == newline[1] and '{' in newline:
@@ -105,8 +125,15 @@ for line in lines:
 
   print newline
   if 'for' in newline:
+    # now delete the ops that can appear in [], assume for statement does not have []
+    # include , + - * / :
+    newlinecat = ''
+    for i in newline:
+      newlinecat += i + ' '
+    newlinecat = newlinecat.strip(' ')
+    newline = newlinecat.replace(',',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('[', ' ').replace(']',' ').split(' ')
+    print newline
     bracket_stack.append('for')
-    newline = " ".join(newlinecat.replace('[', ' ').replace(']',' ').split()).split(' ')
     for k,v in graph.iteritems():
       if k in newline:
           for_stack_map.append((newline[1], k))
@@ -123,12 +150,17 @@ for line in lines:
       if '[' in newline[i]:
         to_process.append(i)
     # declaration with [], [] and var are not connected
-    # example: vector<lower=0>[nconds] gplus;
-    if len(to_process) == 1 and newline[0] in data_type and newline[to_process[0]][0] == '[' and newline[to_process[0]][-1] == ']':
+    # example: vector<lower=0>[nconds] gplus, or vector<lower=0>[T - 1] lambda
+    if len(to_process) == 1 and newline[0] in data_type and '[' in newline[to_process[0]][0] == '[' and newline[to_process[0]][-1] == ']':
       name = newline[-1]
-      graph[name] = set([newline[to_process[0]][1:-1]])
-      if graph_print == 1:
-        print 'graph 1', name, newline[to_process[0]][1:-1]
+      # delete ops that can appear within []: +-*/:,
+      var = newline[to_process[0]][1:-1].replace(',',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
+      graph[name] = set()
+      for v in var:
+        if v in graph:
+          graph[name].add(v)
+          if graph_print == 1:
+            print 'graph 1', name, v
       attr[name] = state
       var_type[name] = newline[0]
       to_process = []
@@ -153,23 +185,23 @@ for line in lines:
             index_c = j + 1
             break
         # find the content bewteen []
-        in_bracket = curr_statement[index_b + 1: index_a].split(',')     
+        # delete ops that can appear within []: +-*/:,
+        in_bracket = curr_statement[index_b + 1: index_a].replace(':',' ').replace(',', ' ').replace('/',' ').replace('+',' ').replace('-',' ').replace('*',' ').split(' ')
         # find the var before this []
         bf_bracket = curr_statement[index_c: index_b]
         #print in_bracket, bf_bracket, index_c, index_b, index_a
 
-        #bf = i.split('[')[0] # outside of []
-        #af = [tmp.strip(' ') for tmp in i.split('[')[-1].strip(']').split(',')] # inside of []
         for a in in_bracket:
           # in a for loop and the index is an index of the loop
           if len(for_stack_map) > 0 and a in iter_index and iter_index[a] < len(for_stack_map):
             mapped_var = for_stack_map[iter_index[a]][1]
           # not in a for loop or the index does not belong to the loop
-          elif a in graph or a.isdigit():
+          elif a in graph or a.isdigit() and len(in_bracket) == 1:
             mapped_var = a
           else:
             continue
           # deal with sth like this: vector[nyears] year_squared;
+          # and vector[T - 1] lambda
           if bf_bracket in data_type:
             graph[newline[-1]] = set([a])
             attr[newline[-1]] = state
@@ -191,13 +223,14 @@ for line in lines:
         new_str = curr_statement[0:index_b] + curr_statement[index_a+1:]
         curr_statement = new_str
       newline[i] = curr_statement 
-    # now can safely delete ,
+    # now can safely delete the ops that can appear in []
+    # include , + - * /
     newlinecat = ''
     for i in newline:
       newlinecat += i + ' '
     newlinecat = newlinecat.strip(' ')
-    if ',' in newlinecat:
-       newline = newlinecat.replace(',',' ').split(' ')
+    newline = newlinecat.replace(',',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
+    print newline
     # var outside of []
     if newline[0] in data_type and not newline[-1] in graph: # declaration
         name = newline[-1]
@@ -212,7 +245,7 @@ for line in lines:
             graph[name].add(i[1]) 
             if graph_print == 1:
               print 'graph 6', name, i[1]
-    elif not newline[0] in data_type: #TODO condition is wrong                      # computation
+    elif not newline[0] in data_type:                   # computation
         name = newline[0]
         for k,v in graph.iteritems():
           if k in newline and k <> name:
@@ -233,6 +266,21 @@ for line in lines:
       iter_index.pop(for_stack_map[-1][0], None)
       del for_stack_map[-1]
     
+# postprocess
+# aggeragate integers with integer variable dependencies
+for k,v in graph.iteritems():
+  flag1 = 0
+  flag2 = 0
+  for i in v:
+    if i in graph and var_type[i] == 'int':
+      flag2 = 1
+  if flag2 == 1:
+    to_delete = []
+    for i in v:
+      if i.isdigit():
+        to_delete.append(i)
+    for i in to_delete:
+        graph[k].remove(i)
 
 print 'GRAPH:'
 for k,v in graph.iteritems():
