@@ -6,16 +6,15 @@
 # verified 14 models out of 69 models in BPA
 # does not work for one statement with {} in one line
 
-# TODO: if statement, /Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.06/M0.stan
-
 import json
 import os
 
 # debugging flags
-graph_print = 1
+graph_print = 0
 for_print = 0
 if_print = 0
-line_print = 1
+line_print = 0
+bracket_print = 0
 
 write = 1
 check = 1
@@ -34,7 +33,7 @@ for path in paths:
       files.append(os.path.join(path, f))
 #for f in files:
 #  print f
-files = ['/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.04/GLMM5.stan']
+#files = ['/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.04/GLMM5.stan']
 output = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph'
 data_type = ['real', 'int', 'vector', 'row_vector', 'matrix']
 
@@ -263,13 +262,17 @@ for modelfile in files:
         var_type[name] = newline[0]
         to_process = []
       
-      print newline, to_process
+      if bracket_print == 1:
+        print newline, to_process
       # bf[af]
       # or a[b[c]], a[b[c],d[e]], etc
+      # TODO: a[i] + b[i]*c[i]
       for i in to_process:
         curr_statement = newline[i]
         while ']' in curr_statement:
         
+          if bracket_print == 1:
+            print curr_statement
           # find the first ]
           index_a = curr_statement.index(']')
           # find the [ before the first ]
@@ -280,7 +283,7 @@ for modelfile in files:
           # find the [ before this [
           index_c = 0
           for j in range(index_b-1, -1, -1):
-            if curr_statement[j] == '[' or curr_statement[j] == ',':
+            if curr_statement[j] == '[' or curr_statement[j] == ',' or curr_statement[j] == ':' or curr_statement[j] == '^' or curr_statement[j] == '/' or curr_statement[j] == '*' or curr_statement[j] == '-' or curr_statement[j] == '+':
               index_c = j + 1
               break
           # find the content bewteen []
@@ -288,7 +291,8 @@ for modelfile in files:
           in_bracket = curr_statement[index_b + 1: index_a].replace(':',' ').replace(',', ' ').replace('^',' ').replace('/',' ').replace('+',' ').replace('-',' ').replace('*',' ').split(' ')
           # find the var before this []
           bf_bracket = curr_statement[index_c: index_b]
-          #print in_bracket, bf_bracket, index_c, index_b, index_a
+          if bracket_print == 1:
+            print in_bracket, bf_bracket, index_c, index_b, index_a
   
           for a in in_bracket:
             # in a for loop and the index is an index of the loop
