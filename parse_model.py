@@ -5,6 +5,10 @@
 # a[b[i],c[i]], generate i->b, i->c, b->a, c->a (ignore i->a)
 # verified 14 models out of 69 models in BPA
 # does not work for one statement with {} in one line
+# does not support /* or */ appearing after statements
+# does not support functions{} as in Ch.07/cjs_add.stan
+# a way to solve this is to build a graph for each functions, and map variables accordingly whenever the function is called
+#TODO: decide whether to keep integer dependencies such as a[3]
 
 import json
 import os
@@ -18,6 +22,9 @@ bracket_print = 0
 
 write = 1
 check = 1
+
+skipped_files = []
+
 root = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/code'
 paths = []
 files = []
@@ -33,9 +40,16 @@ for path in paths:
       files.append(os.path.join(path, f))
 #for f in files:
 #  print f
-#files = ['/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.04/GLMM5.stan']
+
+#files = ['/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.13/owls_ms1.stan']
 output = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph'
-data_type = ['real', 'int', 'vector', 'row_vector', 'matrix']
+# adding a new data type, should not only add it here, but also add it in the preprocess func
+data_type = ['simplex','real', 'int', 'vector', 'row_vector', 'matrix']
+skip = ['functions']
+
+if check == 1:
+  check_results = []
+  not_passed = 0
 
 for modelfile in files:
 
@@ -43,6 +57,8 @@ for modelfile in files:
   model = open(modelfile,'r')
   
   if check == 1:
+    if not os.path.isfile(modelfile.replace('.stan', '.probgraph')):
+      continue
     with open(modelfile.replace('.stan', '.probgraph')) as fin:
          [chk_graph, chk_attr, chk_var_type] = json.load(fin)
     
@@ -66,14 +82,20 @@ for modelfile in files:
   def preprocess(model):
     # if a line does not have key words, = or ~, combine it with previous line
     lines = []
+    ignore = 0
     for line in model:
       line = line.strip('\n').strip(' ')
-      if line == '':
+      if "*/" in line:
+        ignore = 0
+        continue
+      if line == '' or ignore == 1:
         continue
       if line.strip(' ')[0] == '/' and line.strip(' ')[1] == '/':
         continue
       if '//' in line:
         line = line.split('//')[0].strip(' ')  
+      if '/*' in line:
+        ignore = 1
   
       newline = " ".join(line.strip('\n').strip(' ').replace(';', ' '). \
       replace(",", " ").replace(":", " "). \
@@ -95,6 +117,7 @@ for modelfile in files:
       or 'vector' in newline \
       or 'row_vector' in newline \
       or 'matrix' in newline \
+      or 'simplex' in newline \
       or 'for' in newline \
       or 'if' in newline \
       or '{' in newline \
@@ -154,6 +177,9 @@ for modelfile in files:
       bracket_stack.append('generated quantities')
       state = 'generated quantities'
       continue
+    elif 'functions' == newline[0]:
+      skipped_files.append(modelfile)
+      break
   
     if line_print == 1:
       print newline
@@ -194,12 +220,42 @@ for modelfile in files:
       newlinecat = newlinecat.strip(' ')
       newline = newlinecat.replace('^',' ').replace(',',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('[', ' ').replace(']',' ').split(' ')
       bracket_stack.append('for')
+      if for_print == 1:
+        print 'for loop:', newline
+
+      # start to build for variable map
+      flag = 0
+      
+      # if the loop variable is mapped to real variable
       for k,v in graph.iteritems():
         if k in newline:
+            # mapp temp var to real var
             for_stack_map.append((newline[1], k))
             iter_index[newline[1]] = len(for_stack_map)-1
+            flag = 1
             if for_print == 1:
               print 'for 1 push', for_stack_map[-1]
+      # if the loop variable is mapped to outer loop variable
+      if flag == 0:
+        to_add = []
+        for k,v in for_stack_map:
+          if k in newline:
+            to_add.append((newline[1], v))
+            iter_index[newline[1]] = len(for_stack_map) + len(to_add) -1
+            flag = 1
+            if for_print == 1:
+              print 'for 2 push', to_add[-1]
+        for i in to_add:  
+          for_stack_map.append(i)
+      # if the loop variable is mapped to numbers
+      if flag == 0:
+        if not newline[-2].isdigit():
+          print 'ATTENTION this for loop mapping is strange!'
+        for_stack_map.append((newline[1], newline[-2]))
+        iter_index[newline[1]] = len(for_stack_map) -1
+        flag = 1
+        if for_print == 1:
+          print 'for 3 push', for_stack_map[-1]
       if not '{' in newline:
         for_flag = 1
       continue
@@ -424,8 +480,21 @@ for modelfile in files:
         flag = 0
         print 'Graph is wrong: ',k, graph[k], chk_graph[k]
     if flag == 0:
+      check_resulsts.append((modelfile, 'NO'))
       print 'Does not pass correction check.'
+      not_passed += 1
     else:
-      print 'Correstion Check Passed.'
+      check_results.append((modelfile, 'YES'))
+      print 'Correction Check Passed.'
 
   model.close()
+
+if check == 1:
+  print '\n\nCheck results:'
+  for i in check_results:
+    print i[0],'\t', i[1]
+  print 'Number of not passed file: ', not_passed, 'out of', len(check_results), 'files, ', not_passed*1.0/len(check_results) 
+print 'Total file:', len(files)
+print 'Skipped files:', len(skipped_files)
+for i in skipped_files:
+  print i
