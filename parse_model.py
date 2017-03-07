@@ -13,14 +13,14 @@ import json
 import os
 
 # debugging flags
-line_print = 1 
-graph_print = 1
+line_print = 0 
+graph_print = 0
 for_print = 0
 if_print = 0
 bracket_print = 0
 
 write = 1
-check = 1
+check = 1 
 
 skipped_files = []
 
@@ -103,6 +103,7 @@ for modelfile in files:
       replace('-', ' '). \
       replace('/', ' '). \
       replace('*',' '). \
+      replace('!',' '). \
       replace('^',' '). \
       replace('(', ' '). \
       replace(')', ' '). \
@@ -187,7 +188,8 @@ for modelfile in files:
 
     # pop stack first
     if '}' in newline: 
-      print 'stack', bracket_stack
+      if if_print == 1 or for_print == 1:
+        print 'stack', bracket_stack
       pop = bracket_stack[-1]
       del bracket_stack[-1]
       if pop <> 'for':
@@ -219,7 +221,7 @@ for modelfile in files:
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      newline = newlinecat.replace('^',' ').replace(',',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('[', ' ').replace(']',' ').split(' ')
+      newline = newlinecat.replace('^',' ').replace(',',' ').replace('!',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('[', ' ').replace(']',' ').split(' ')
       bracket_stack.append('for')
       if for_print == 1:
         print 'for loop:', newline
@@ -277,7 +279,7 @@ for modelfile in files:
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      newline = newlinecat.replace(',',' ').replace('^',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('[', ' ').replace(']',' ').split(' ')
+      newline = newlinecat.replace(',',' ').replace('^',' ').replace('!',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('[', ' ').replace(']',' ').split(' ')
       to_push = []
       for k,v in graph.iteritems():
         if k in newline:
@@ -295,6 +297,10 @@ for modelfile in files:
         if_flag = 1
         print "ATTENTION: else does not have {}!"
       continue
+    # {} which does not belong to for or if
+    elif '{' in newline:
+      bracket_stack.append('empty')
+      continue
     else:  
       # find index in the []
       to_process = []
@@ -305,8 +311,8 @@ for modelfile in files:
       # example: vector<lower=0>[N] a, or vector<lower=0>[T - 1] b, or matrix<lower=0,upper=1>[N, M] c 
       if len(to_process) == 1 and newline[0] in data_type and '[' in newline[to_process[0]][0] == '[' and newline[to_process[0]][-1] == ']':
         name = newline[-1]
-        # delete ops that can appear within []: +-*/:,
-        var = newline[to_process[0]][1:-1].replace(',',' ').replace('^',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
+        # delete ops that can appear within []: +-*/:!,
+        var = newline[to_process[0]][1:-1].replace(',',' ').replace('^',' ').replace('!',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
         graph[name] = set()
         if graph_print == 1:
           print 'graph 0', name
@@ -340,12 +346,12 @@ for modelfile in files:
           # find the [ before this [
           index_c = 0
           for j in range(index_b-1, -1, -1):
-            if curr_statement[j] == '[' or curr_statement[j] == ',' or curr_statement[j] == ':' or curr_statement[j] == '^' or curr_statement[j] == '/' or curr_statement[j] == '*' or curr_statement[j] == '-' or curr_statement[j] == '+':
+            if curr_statement[j] == '[' or curr_statement[j] == ',' or curr_statement[j] == ':' or curr_statement[j] == '^' or curr_statement[j] == '!' or curr_statement[j] == '/' or curr_statement[j] == '*' or curr_statement[j] == '-' or curr_statement[j] == '+':
               index_c = j + 1
               break
           # find the content bewteen []
           # delete ops that can appear within []: +-*/:,
-          in_bracket = curr_statement[index_b + 1: index_a].replace(':',' ').replace(',', ' ').replace('^',' ').replace('/',' ').replace('+',' ').replace('-',' ').replace('*',' ').split(' ')
+          in_bracket = curr_statement[index_b + 1: index_a].replace(':',' ').replace(',', ' ').replace('^',' ').replace('/',' ').replace('+',' ').replace('!',' ').replace('-',' ').replace('*',' ').split(' ')
           # find the var before this []
           bf_bracket = curr_statement[index_c: index_b]
           if bracket_print == 1:
@@ -389,7 +395,7 @@ for modelfile in files:
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      newline = newlinecat.replace(',',' ').replace('^',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
+      newline = newlinecat.replace(',',' ').replace('^',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('!',' ').split(' ')
       # var outside of []
       # declaration with computation, e.g. int a = b - 1;
       if newline[0] in data_type and '=' in newline:
