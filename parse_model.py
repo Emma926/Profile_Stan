@@ -3,12 +3,38 @@
 # ignore the arithmetic operations within []
 # examples: eps[2:nyear] = eps2[1:nyear - 1], or N_est[t + 1] = N_est[t] * lambda[t];
 # a[b[i],c[i]], generate i->b, i->c, b->a, c->a (ignore i->a)
+# verified 14 models out of 69 models in BPA
+# does not work for one statement with {} in one line
+
+# TODO: if statement, /Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.06/M0.stan
 
 import json
 import os
 
+# debugging flags
+graph_print = 1
+for_print = 0
+if_print = 0
+line_print = 1
 
-files = ['/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.05/ssm2.stan', '/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.03/GLM_Binomial.stan', '/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.03/GLM_Poisson.stan']
+write = 1
+check = 1
+root = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/code'
+paths = []
+files = []
+# find all the paths
+fs = os.listdir(root)
+for f in fs:
+    if 'Ch' in f:
+      paths.append(os.path.join(root, f))
+for path in paths:
+  fs = os.listdir(path)
+  for f in fs:
+    if '.stan' in f:
+      files.append(os.path.join(path, f))
+#for f in files:
+#  print f
+files = ['/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.04/GLMM5.stan']
 output = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph'
 data_type = ['real', 'int', 'vector', 'row_vector', 'matrix']
 
@@ -16,8 +42,6 @@ for modelfile in files:
 
   print modelfile
   model = open(modelfile,'r')
-  write = 1
-  check = 1
   
   if check == 1:
     with open(modelfile.replace('.stan', '.probgraph')) as fin:
@@ -27,15 +51,16 @@ for modelfile in files:
   attr = {}
   var_type = {}
   
-  graph_print = 0
-  for_print = 0
   
-  for_flag = 0 # the for loops without {}
+  for_flag = 0  # the for loops without {}
+  if_flag = 0   # the if without {}
   
   state = ''
   bracket_stack = []
   for_stack_map = []
   iter_index = {}
+  if_stack = []
+  if_stack_buffer = []
   
   # deal with one statement in multiple lines
   # ignore comments
@@ -60,6 +85,7 @@ for modelfile in files:
       replace('-', ' '). \
       replace('/', ' '). \
       replace('*',' '). \
+      replace('^',' '). \
       replace('(', ' '). \
       replace(')', ' '). \
       replace('\'',' '). \
@@ -71,6 +97,7 @@ for modelfile in files:
       or 'row_vector' in newline \
       or 'matrix' in newline \
       or 'for' in newline \
+      or 'if' in newline \
       or '{' in newline \
       or '}' in newline \
       or '=' in newline \
@@ -129,16 +156,44 @@ for modelfile in files:
       state = 'generated quantities'
       continue
   
-    #print newline
+    if line_print == 1:
+      print newline
+
+    # pop stack first
+    if '}' in newline: 
+      print 'stack', bracket_stack
+      pop = bracket_stack[-1]
+      del bracket_stack[-1]
+      if pop <> 'for':
+        state = ''
+      if pop == 'for':
+        if for_print == 1:
+          print 'for 2 pop', for_stack_map[-1]
+        iter_index.pop(for_stack_map[-1][0], None)
+        del for_stack_map[-1]
+      if pop == 'if' or pop == 'else if' or pop == 'else':
+        if if_print == 1:
+          print pop, '1 pop', if_stack, bracket_stack, if_flag
+        if_stack_buffer = if_stack[-1][:]
+        del if_stack[-1]
+    # delete }
+    if newline[0] == '}' and len(newline) == 1:
+      continue
+    newlinecat = ''
+    for i in newline:
+      newlinecat += i + ' '
+    newlinecat = newlinecat.strip(' ')
+    newline = newlinecat.replace('}',' ').split(' ')    
+
     if 'for' in newline:
       # now delete the ops that can appear in [], assume for statement does not have []
+      # assume one mapping in one for statement only
       # include , + - * / :
       newlinecat = ''
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      newline = newlinecat.replace(',',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('[', ' ').replace(']',' ').split(' ')
-      #print newline
+      newline = newlinecat.replace('^',' ').replace(',',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('[', ' ').replace(']',' ').split(' ')
       bracket_stack.append('for')
       for k,v in graph.iteritems():
         if k in newline:
@@ -148,6 +203,41 @@ for modelfile in files:
               print 'for 1 push', for_stack_map[-1]
       if not '{' in newline:
         for_flag = 1
+      continue
+    elif 'if' in newline:  # if and else if fall into here  
+      # ignore [] in if statement for now
+      # assume if and else are in {}
+      # there can appear multiple variables in one if statement, push them all together
+      # deals with nested if 
+      if not '{' in newline:
+        if_flag = 1
+        print "ATTENTION: If does not have {}!"
+      if 'else' in newline:
+        bracket_stack.append('else if')
+        if_stack.append(if_stack_buffer)
+      else:
+        bracket_stack.append('if')
+      newlinecat = ''
+      for i in newline:
+        newlinecat += i + ' '
+      newlinecat = newlinecat.strip(' ')
+      newline = newlinecat.replace(',',' ').replace('^',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('[', ' ').replace(']',' ').split(' ')
+      to_push = []
+      for k,v in graph.iteritems():
+        if k in newline:
+          to_push.append(k)
+      if_stack.append(to_push)
+      if if_print == 1:
+        print 'if push', to_push, if_stack, bracket_stack
+      continue
+    elif 'else' in newline: # only else
+      bracket_stack.append('else')
+      if_stack.append(if_stack_buffer)
+      if if_print == 1:
+        print 'else push', to_push, if_stack, bracket_stack
+      if not '{' in newline:
+        if_flag = 1
+        print "ATTENTION: else does not have {}!"
       continue
     else:  
       # find index in the []
@@ -160,8 +250,10 @@ for modelfile in files:
       if len(to_process) == 1 and newline[0] in data_type and '[' in newline[to_process[0]][0] == '[' and newline[to_process[0]][-1] == ']':
         name = newline[-1]
         # delete ops that can appear within []: +-*/:,
-        var = newline[to_process[0]][1:-1].replace(',',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
+        var = newline[to_process[0]][1:-1].replace(',',' ').replace('^',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
         graph[name] = set()
+        if graph_print == 1:
+          print 'graph 0', name
         for v in var:
           if v in graph:
             graph[name].add(v)
@@ -171,6 +263,7 @@ for modelfile in files:
         var_type[name] = newline[0]
         to_process = []
       
+      print newline, to_process
       # bf[af]
       # or a[b[c]], a[b[c],d[e]], etc
       for i in to_process:
@@ -192,7 +285,7 @@ for modelfile in files:
               break
           # find the content bewteen []
           # delete ops that can appear within []: +-*/:,
-          in_bracket = curr_statement[index_b + 1: index_a].replace(':',' ').replace(',', ' ').replace('/',' ').replace('+',' ').replace('-',' ').replace('*',' ').split(' ')
+          in_bracket = curr_statement[index_b + 1: index_a].replace(':',' ').replace(',', ' ').replace('^',' ').replace('/',' ').replace('+',' ').replace('-',' ').replace('*',' ').split(' ')
           # find the var before this []
           bf_bracket = curr_statement[index_c: index_b]
           #print in_bracket, bf_bracket, index_c, index_b, index_a
@@ -235,8 +328,7 @@ for modelfile in files:
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      newline = newlinecat.replace(',',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
-      #print newline
+      newline = newlinecat.replace(',',' ').replace('^',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
       # var outside of []
       if newline[0] in data_type and not newline[-1] in graph: # declaration
           name = newline[-1]
@@ -253,24 +345,44 @@ for modelfile in files:
                 print 'graph 6', name, i[1]
       elif not newline[0] in data_type:                   # computation
           name = newline[0]
+          if not name in graph: # if the dest variable is not declared
+            graph[name] = set()
+            attr[name] = 'not declared'
+            var_type[name] = 'not declared'
+            if graph_print == 1:
+              print 'graph', name, 'not declared'
           for k,v in graph.iteritems():
             if k in newline and k <> name:
               graph[name].add(k)
               if graph_print == 1:
                 print 'graph 7', name, k
-      
-    if '}' in newline or for_flag == 1:
+      if len(if_stack) > 0:
+        for i in if_stack:
+          for j in i:
+            graph[name].add(j)
+            
+    # flags: here already processed one statement after for or if
+    if for_flag == 1 or if_flag == 1: 
       #print 'stack', bracket_stack
-      for_flag = 0
       pop = bracket_stack[-1]
       del bracket_stack[-1]
       if pop <> 'for':
         state = ''
       if pop == 'for':
+        for_flag = 0
         if for_print == 1:
-          print 'for 2 pop', for_stack_map[-1]
+          print 'for 3 pop', for_stack_map[-1]
         iter_index.pop(for_stack_map[-1][0], None)
         del for_stack_map[-1]
+      if pop == 'if' or pop == 'else if':
+        if_stack_buffer = if_stack[-1][:]
+      if pop == 'if' or pop == 'else if' or pop == 'else':
+        if_flag = 0 
+        if if_print == 1:
+          print pop, '3 pop', if_stack, bracket_stack, if_flag      
+        del if_stack[-1]
+      
+      
       
   # postprocess
   # aggeragate integers with integer variable dependencies
