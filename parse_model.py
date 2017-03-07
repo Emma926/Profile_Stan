@@ -1,5 +1,5 @@
 # caveat: variables are dependent on the index variables 
-# real beta[3]; there are 3 betas here, create integers as "variables"
+# real beta[3]; there are 3 betas here, create "3" as a "variable"; only keep the largest integer
 # ignore the arithmetic operations within []
 # examples: eps[2:nyear] = eps2[1:nyear - 1], or N_est[t + 1] = N_est[t] * lambda[t];
 # a[b[i],c[i]], generate i->b, i->c, b->a, c->a (ignore i->a)
@@ -8,7 +8,6 @@
 # does not support /* or */ appearing after statements
 # does not support functions{} as in Ch.07/cjs_add.stan
 # a way to solve this is to build a graph for each functions, and map variables accordingly whenever the function is called
-#TODO: decide whether to keep integer dependencies such as a[3]
 
 import json
 import os
@@ -41,7 +40,6 @@ for path in paths:
 #for f in files:
 #  print f
 
-#files = ['/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.13/owls_ms1.stan']
 output = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph'
 # adding a new data type, should not only add it here, but also add it in the preprocess func
 data_type = ['simplex','real', 'int', 'vector', 'row_vector', 'matrix']
@@ -443,22 +441,20 @@ for modelfile in files:
         del if_stack[-1]
       
       
-      
   # postprocess
-  # aggeragate integers with integer variable dependencies
+  # aggeragate integers with largest integer
   for k,v in graph.iteritems():
-    flag1 = 0
-    flag2 = 0
+    flag = 0
+    integers = []
     for i in v:
-      if i in graph and var_type[i] == 'int':
-        flag2 = 1
-    if flag2 == 1:
-      to_delete = []
-      for i in v:
-        if i.isdigit():
-          to_delete.append(i)
-      for i in to_delete:
-          graph[k].remove(i)
+      if i.isdigit():
+        flag = 1
+        integers.append(int(i))
+    if flag == 1:
+      for i in integers:
+          graph[k].remove(str(i))
+      if max(integers) > 1:
+        graph[k].add(max(integers))
   
   print 'GRAPH:'
   for k,v in graph.iteritems():
@@ -480,7 +476,7 @@ for modelfile in files:
         flag = 0
         print 'Graph is wrong: ',k, graph[k], chk_graph[k]
     if flag == 0:
-      check_resulsts.append((modelfile, 'NO'))
+      check_results.append((modelfile, 'NO'))
       print 'Does not pass correction check.'
       not_passed += 1
     else:
