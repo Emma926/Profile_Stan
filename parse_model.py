@@ -9,7 +9,7 @@ if_print = 0
 bracket_print = 0
 
 write = 1
-check = 0 
+check = 0
 
 skipped_files = []
 
@@ -118,7 +118,20 @@ for modelfile in files:
         lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
   
     return lines
-  
+
+
+  def add_to_graph(node, parents, att, var_ty,  dependency, debug = ''):
+    if not node in graph:
+      graph[node] = set()
+      attr[node] = att
+      var_type[node] = var_ty
+      if graph_print == 1:
+        print 'graph ', debug, node
+    for p in parents:
+      graph[node].add(p)
+      if graph_print == 1:
+        print 'graph ', debug, node, p
+
   lines = preprocess(model)
   #for line in lines:
   #  print line
@@ -302,23 +315,17 @@ for modelfile in files:
         name = newline[-1]
         # delete ops that can appear within []: +-*/:!,
         var = newline[to_process[0]][1:-1].replace(',',' ').replace('^',' ').replace('!',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
-        graph[name] = set()
-        if graph_print == 1:
-          print 'graph 0', name
+        parents = []
         for v in var:
           if v in graph:
-            graph[name].add(v)
-            if graph_print == 1:
-              print 'graph 1', name, v
-        attr[name] = state
-        var_type[name] = newline[0]
+            parents.append(v)
+        add_to_graph(name, parents, state, newline[0], '', '1')
         to_process = []
       
       if bracket_print == 1:
         print newline, to_process
       # bf[af]
       # or a[b[c]], a[b[c],d[e]], etc
-      # TODO: a[i] + b[i]*c[i]
       for i in to_process:
         curr_statement = newline[i]
         while ']' in curr_statement:
@@ -358,22 +365,13 @@ for modelfile in files:
             # deal with sth like this: vector[nyears] year_squared;
             # and vector[T - 1] lambda
             if bf_bracket in data_type:
-              graph[newline[-1]] = set([a])
-              attr[newline[-1]] = state
-              var_type[newline[-1]] = bf_bracket
-              if graph_print == 1:
-                print 'graph 2',newline[-1], a, graph[newline[-1]]
+              add_to_graph(newline[-1], [a], state, bf_bracket, '', '2')
   
             if not bf_bracket in graph and newline[0] in data_type:
-              graph[bf_bracket] = set()
-              if graph_print == 1:
-                print 'graph 3', bf_bracket
-              attr[bf_bracket] = state
-              var_type[bf_bracket] = newline[0]
+              add_to_graph(bf_bracket, [], state, newline[0], '', '3')
             if bf_bracket in graph:
-              graph[bf_bracket].add(mapped_var)
-              if graph_print == 1:
-                print 'graph 4', bf_bracket, mapped_var
+              add_to_graph(bf_bracket, [mapped_var], '', '', '', '4')
+
           # delete the [] and contents between them
           new_str = curr_statement[0:index_b] + curr_statement[index_a+1:]
           curr_statement = new_str
@@ -389,49 +387,37 @@ for modelfile in files:
       # declaration with computation, e.g. int a = b - 1;
       if newline[0] in data_type and '=' in newline:
           name = newline[1]
-          graph[name] = set()
-          attr[name] = state
-          var_type[name] = newline[0]
-          if graph_print == 1:
-            print 'graph 8', name
+          parents = []
           for k,v in graph.iteritems():
             if k in newline and k <> name:
-              graph[name].add(k)
-              if graph_print == 1:
-                print 'graph 9', name, k
+              parents.append(k)
+          add_to_graph(name, parents, state, newline[0], '', '5')
       # declaration, e.g. int a;
       elif newline[0] in data_type and not newline[-1] in graph: 
           name = newline[-1]
-          graph[name] = set()
-          if graph_print == 1:
-            print 'graph 5', name
-          attr[name] = state
-          var_type[name] = newline[0]
           # if within loop(s), this var is dependent on the loop indices
+          parents = []
           if len(for_stack_map) > 0:
             for i in for_stack_map:
-              graph[name].add(i[1]) 
-              if graph_print == 1:
-                print 'graph 6', name, i[1]  
+              parents.append(i[1]) 
+          add_to_graph(name, parents, state, newline[0], '', '6')
       # computation, e.g. a = b - 1
       elif not newline[0] in data_type:                  
           name = newline[0]
           # if the dest variable is not declared
           if not name in graph:
-            graph[name] = set()
-            attr[name] = 'not declared'
-            var_type[name] = 'not declared'
-            if graph_print == 1:
-              print 'graph', name, 'not declared'
+            add_to_graph(name, [], 'not declared', 'not declared', '', '7')
+          parents = []
           for k,v in graph.iteritems():
             if k in newline and k <> name:
-              graph[name].add(k)
-              if graph_print == 1:
-                print 'graph 7', name, k
+              parents.append(k)
+          add_to_graph(name, parents, '', '', '', '8')
       if len(if_stack) > 0:
+        parents = []
         for i in if_stack:
           for j in i:
-            graph[name].add(j)
+            parents.append(j)
+        add_to_graph(name, [j], '', '', '', '9')
             
     # flags: here already processed one statement after for or if
     if for_flag == 1 or if_flag == 1: 
