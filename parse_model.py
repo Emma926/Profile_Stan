@@ -6,17 +6,17 @@
 # verified 14 models out of 69 models in BPA
 # does not work for one statement with {} in one line
 # does not support /* or */ appearing after statements
-# does not support functions{} as in Ch.07/cjs_add.stan
-# a way to solve this is to build a graph for each functions, and map variables accordingly whenever the function is called
+# simply deal with functions{} (e.g. Ch.07/cjs_add.stan) by adding a connection between returned value and arguments
+# a more sophisticated way to solve this is to build a graph for each functions, and map variables accordingly whenever the function is called
 
 import json
 import os
 
 # debugging flags
-graph_print = 0
+line_print = 1 
+graph_print = 1
 for_print = 0
 if_print = 0
-line_print = 0
 bracket_print = 0
 
 write = 1
@@ -42,8 +42,7 @@ for path in paths:
 
 output = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph'
 # adding a new data type, should not only add it here, but also add it in the preprocess func
-data_type = ['simplex','real', 'int', 'vector', 'row_vector', 'matrix']
-skip = ['functions']
+data_type = ['cov_matrix', 'simplex','real', 'int', 'vector', 'row_vector', 'matrix']
 
 if check == 1:
   check_results = []
@@ -115,6 +114,7 @@ for modelfile in files:
       or 'vector' in newline \
       or 'row_vector' in newline \
       or 'matrix' in newline \
+      or 'cov_matrix' in newline \
       or 'simplex' in newline \
       or 'for' in newline \
       or 'if' in newline \
@@ -176,8 +176,11 @@ for modelfile in files:
       state = 'generated quantities'
       continue
     elif 'functions' == newline[0]:
-      skipped_files.append(modelfile)
-      break
+      state = 'functions'
+      continue
+
+    if state == "functions":
+      continue
   
     if line_print == 1:
       print newline
@@ -299,7 +302,7 @@ for modelfile in files:
         if '[' in newline[i]:
           to_process.append(i)
       # declaration with [], [] and var are not connected
-      # example: vector<lower=0>[nconds] gplus, or vector<lower=0>[T - 1] lambda
+      # example: vector<lower=0>[N] a, or vector<lower=0>[T - 1] b, or matrix<lower=0,upper=1>[N, M] c 
       if len(to_process) == 1 and newline[0] in data_type and '[' in newline[to_process[0]][0] == '[' and newline[to_process[0]][-1] == ']':
         name = newline[-1]
         # delete ops that can appear within []: +-*/:,
@@ -388,7 +391,21 @@ for modelfile in files:
       newlinecat = newlinecat.strip(' ')
       newline = newlinecat.replace(',',' ').replace('^',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
       # var outside of []
-      if newline[0] in data_type and not newline[-1] in graph: # declaration
+      # declaration with computation, e.g. int a = b - 1;
+      if newline[0] in data_type and '=' in newline:
+          name = newline[1]
+          graph[name] = set()
+          attr[name] = state
+          var_type[name] = newline[0]
+          if graph_print == 1:
+            print 'graph 8', name
+          for k,v in graph.iteritems():
+            if k in newline and k <> name:
+              graph[name].add(k)
+              if graph_print == 1:
+                print 'graph 9', name, k
+      # declaration, e.g. int a;
+      elif newline[0] in data_type and not newline[-1] in graph: 
           name = newline[-1]
           graph[name] = set()
           if graph_print == 1:
@@ -400,10 +417,12 @@ for modelfile in files:
             for i in for_stack_map:
               graph[name].add(i[1]) 
               if graph_print == 1:
-                print 'graph 6', name, i[1]
-      elif not newline[0] in data_type:                   # computation
+                print 'graph 6', name, i[1]  
+      # computation, e.g. a = b - 1
+      elif not newline[0] in data_type:                  
           name = newline[0]
-          if not name in graph: # if the dest variable is not declared
+          # if the dest variable is not declared
+          if not name in graph:
             graph[name] = set()
             attr[name] = 'not declared'
             var_type[name] = 'not declared'
