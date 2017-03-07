@@ -1,14 +1,3 @@
-# caveat: variables are dependent on the index variables 
-# real beta[3]; there are 3 betas here, create "3" as a "variable"; only keep the largest integer
-# ignore the arithmetic operations within []
-# examples: eps[2:nyear] = eps2[1:nyear - 1], or N_est[t + 1] = N_est[t] * lambda[t];
-# a[b[i],c[i]], generate i->b, i->c, b->a, c->a (ignore i->a)
-# verified 14 models out of 69 models in BPA
-# does not work for one statement with {} in one line
-# does not support /* or */ appearing after statements
-# simply deal with functions{} (e.g. Ch.07/cjs_add.stan) by adding a connection between returned value and arguments
-# a more sophisticated way to solve this is to build a graph for each functions, and map variables accordingly whenever the function is called
-
 import json
 import os
 
@@ -20,7 +9,7 @@ if_print = 0
 bracket_print = 0
 
 write = 1
-check = 1 
+check = 0 
 
 skipped_files = []
 
