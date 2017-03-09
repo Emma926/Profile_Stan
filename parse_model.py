@@ -1,5 +1,9 @@
+# TODO: change graph into node: [({parents}, dependency_type)]
+# where dependency_type = {indexing, simple/complex computation, discrete/continuous distribution}
 import json
 import os
+from distributions import *
+from functions import *
 
 # debugging flags
 line_print = 0 
