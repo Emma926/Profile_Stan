@@ -1,19 +1,18 @@
-# TODO: change graph into node: [({parents}, dependency_type)]
-# where dependency_type = {indexing, simple/complex computation, discrete/continuous distribution}
+# TODO: add user-defined functions
 import json
 import os
 from distributions import *
 from functions import *
 
 # debugging flags
-line_print = 0 
-graph_print = 0
+line_print = 1 
+graph_print = 1
 for_print = 0
 if_print = 0
 bracket_print = 0
 
 write = 1
-check = 0
+check = 1
 
 skipped_files = []
 
@@ -33,9 +32,11 @@ for path in paths:
 #for f in files:
 #  print f
 
+files = ["/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.03/GLM_Binomial.stan"]
 output = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph'
 # adding a new data type, should not only add it here, but also add it in the preprocess func
 data_type = ['cov_matrix', 'simplex','real', 'int', 'vector', 'row_vector', 'matrix']
+dependencies = set(['indexing', 'read', 'basic', 'complex', 'discrete', 'continuous'])
 
 if check == 1:
   check_results = []
@@ -102,6 +103,12 @@ for modelfile in files:
       replace(')', ' '). \
       replace('\'',' '). \
       replace('<',' ').replace('>', ' ').split()).split(' ')
+      
+      # declaration, delete <> and contents in between
+      if newline[0] in data_type and '<' in line and '>' in line:
+        ind_a = line.index('<')
+        ind_b = line.index('>')
+        line = line[0:ind_a] + line[ind_b+1:]
   
       if 'real' in newline \
       or 'int' in newline \
@@ -124,18 +131,48 @@ for modelfile in files:
     return lines
 
 
-  def add_to_graph(node, parents, att, var_ty,  dependency, debug = ''):
+  def add_to_graph(node, parents, att, var_ty, dependency, debug = ''):
     if not node in graph:
-      graph[node] = set()
+      graph[node] = []
       attr[node] = att
       var_type[node] = var_ty
       if graph_print == 1:
         print 'graph ', debug, node
-    for p in parents:
-      graph[node].add(p)
-      if graph_print == 1:
-        print 'graph ', debug, node, p
+    if not dependency in dependencies:
+      print 'No such dependency:', dependency
+      return
+    flag = 0
+    for p,d in graph[node]:
+      if p == set(parents) and d == dependency:
+        flag = 1
+        break
+    if flag == 0:
+      graph[node].append((set(parents), dependency))
+    if graph_print == 1:
+        print 'graph ', debug, node, parents
 
+  # find distribution or function names, return type
+  def find_keywords(line): 
+    t = ''
+    for w in line:
+      # if a ~ normal(b+1), return distribution instead of basic computation
+      if w in distribution_type2:
+        t = distribution_higher_type[distribution_type2[w]]
+        print 'find type', w, t 
+        break
+      if w in functions:
+        t = function_type[functions[w]]
+        print 'find type', w, t
+        break
+    return t
+
+  op_signs = ['%', '^', ':', ',', '.*', './', '+', '-', '/', '*', '<=', '<', '>=', ">", '==', '!=', '!', '&&', '||', '\\']
+  def replace_op_signs(s):
+    for i in op_signs:
+      s = s.replace(i,' ')
+    return s
+  
+      
   lines = preprocess(model)
   #for line in lines:
   #  print line
@@ -144,18 +181,19 @@ for modelfile in files:
     # ignore whatever can appear within []
     newline = " ".join(line.strip('\n').strip(' ').replace(';', ' '). \
     replace(", ", ","). \
-    replace(' + ','+'). \
-    replace('.*',' '). \
+    replace(' + ','+').replace(' - ', '-').replace(' / ', '/').replace(' * ','*'). \
+    replace(" < ", "<").replace(' <= ','<=').replace(' > ', '>').replace(' >= ', '>='). \
+    replace(" == ", "==").replace(' != ','!=').replace(' !', '!'). \
+    replace(" && ", "&&").replace(' || ','||'). \
+    replace(' .* ','.*').replace(' ./ ','./'). \
     replace('<-', ' ').\
-    replace(' - ', '-'). \
-    replace(' / ', '/'). \
-    replace(' * ','*'). \
+    replace(' % ', '%'). \
+    replace(' \\ ', '\\'). \
     replace('(', ' '). \
     replace(')', ' '). \
     replace('~', ' ').\
     replace('\'',' '). \
     replace('<',' ').replace('>', ' ').split()).split(' ')
-    #newline = " ".join(newline.replace('/',' ').split()).split(' ')
     
   
     if 'transformed' == newline[0] and 'parameters' == newline[1] and '{' in newline:
@@ -227,7 +265,7 @@ for modelfile in files:
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      newline = newlinecat.replace('^',' ').replace(',',' ').replace('!',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('[', ' ').replace(']',' ').split(' ')
+      newline = replace_op_signs(newlinecat).replace(']',' ').replace('[', ' ').split(' ')
       bracket_stack.append('for')
       if for_print == 1:
         print 'for loop:', newline
@@ -285,7 +323,7 @@ for modelfile in files:
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      newline = newlinecat.replace(',',' ').replace('^',' ').replace('!',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('[', ' ').replace(']',' ').split(' ')
+      newline = replace_op_signs(newlinecat).replace('[', ' ').replace(']',' ').split(' ')
       to_push = []
       for k,v in graph.iteritems():
         if k in newline:
@@ -318,12 +356,12 @@ for modelfile in files:
       if len(to_process) == 1 and newline[0] in data_type and '[' in newline[to_process[0]][0] == '[' and newline[to_process[0]][-1] == ']':
         name = newline[-1]
         # delete ops that can appear within []: +-*/:!,
-        var = newline[to_process[0]][1:-1].replace(',',' ').replace('^',' ').replace('!',' ').replace(':',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').split(' ')
+        var = replace_op_signs(newline[to_process[0]][1:-1]).split(' ')
         parents = []
         for v in var:
           if v in graph:
             parents.append(v)
-        add_to_graph(name, parents, state, newline[0], '', '1')
+        add_to_graph(name, parents, state, newline[0], 'indexing', '1')
         to_process = []
       
       if bracket_print == 1:
@@ -346,12 +384,12 @@ for modelfile in files:
           # find the [ before this [
           index_c = 0
           for j in range(index_b-1, -1, -1):
-            if curr_statement[j] == '[' or curr_statement[j] == ',' or curr_statement[j] == ':' or curr_statement[j] == '^' or curr_statement[j] == '!' or curr_statement[j] == '/' or curr_statement[j] == '*' or curr_statement[j] == '-' or curr_statement[j] == '+':
+            if curr_statement[j] == '[' or curr_statement[j] in op_signs:
               index_c = j + 1
               break
           # find the content bewteen []
           # delete ops that can appear within []: +-*/:,
-          in_bracket = curr_statement[index_b + 1: index_a].replace(':',' ').replace(',', ' ').replace('^',' ').replace('/',' ').replace('+',' ').replace('!',' ').replace('-',' ').replace('*',' ').split(' ')
+          in_bracket = replace_op_signs(curr_statement[index_b + 1: index_a]).split(' ')
           # find the var before this []
           bf_bracket = curr_statement[index_c: index_b]
           if bracket_print == 1:
@@ -369,12 +407,12 @@ for modelfile in files:
             # deal with sth like this: vector[nyears] year_squared;
             # and vector[T - 1] lambda
             if bf_bracket in data_type:
-              add_to_graph(newline[-1], [a], state, bf_bracket, '', '2')
+              add_to_graph(newline[-1], [a], state, bf_bracket, 'indexing', '2')
   
             if not bf_bracket in graph and newline[0] in data_type:
               add_to_graph(bf_bracket, [], state, newline[0], '', '3')
             if bf_bracket in graph:
-              add_to_graph(bf_bracket, [mapped_var], '', '', '', '4')
+              add_to_graph(bf_bracket, [mapped_var], '', '', 'indexing', '4')
 
           # delete the [] and contents between them
           new_str = curr_statement[0:index_b] + curr_statement[index_a+1:]
@@ -382,11 +420,16 @@ for modelfile in files:
         newline[i] = curr_statement 
       # now can safely delete the ops that can appear in []
       # include , + - * /
+      find_basic = ''
       newlinecat = ''
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      newline = newlinecat.replace(',',' ').replace('^',' ').replace('+',' ').replace('-',' ').replace('*',' ').replace('/',' ').replace('!',' ').split(' ')
+      for i in ['%', '.*', './', '+', '-', '/', '*', '&&', '||', '\\']:
+        if i in newlinecat:
+          find_basic = 'basic'
+          break
+      newline = replace_op_signs(newlinecat).split(' ')
       # var outside of []
       # declaration with computation, e.g. int a = b - 1;
       if newline[0] in data_type and '=' in newline:
@@ -395,7 +438,10 @@ for modelfile in files:
           for k,v in graph.iteritems():
             if k in newline and k <> name:
               parents.append(k)
-          add_to_graph(name, parents, state, newline[0], '', '5')
+          t = find_keywords(newline)
+          if t == "":
+            t = find_basic
+          add_to_graph(name, parents, state, newline[0], t, '5')
       # declaration, e.g. int a;
       elif newline[0] in data_type and not newline[-1] in graph: 
           name = newline[-1]
@@ -404,24 +450,33 @@ for modelfile in files:
           if len(for_stack_map) > 0:
             for i in for_stack_map:
               parents.append(i[1]) 
-          add_to_graph(name, parents, state, newline[0], '', '6')
+          t = find_keywords(newline)
+          if t == "":
+            t = find_basic
+          add_to_graph(name, parents, state, newline[0], t, '6')
       # computation, e.g. a = b - 1
       elif not newline[0] in data_type:                  
           name = newline[0]
           # if the dest variable is not declared
+          t = find_keywords(newline)
+          if t == "":
+            t = find_basic
           if not name in graph:
-            add_to_graph(name, [], 'not declared', 'not declared', '', '7')
+            add_to_graph(name, [], 'not declared', 'not declared', t, '7')
           parents = []
           for k,v in graph.iteritems():
             if k in newline and k <> name:
               parents.append(k)
-          add_to_graph(name, parents, '', '', '', '8')
+          add_to_graph(name, parents, '', '', t, '8')
       if len(if_stack) > 0:
         parents = []
         for i in if_stack:
           for j in i:
             parents.append(j)
-        add_to_graph(name, [j], '', '', '', '9')
+        t = find_keywords(newline)
+        if t == "":
+          t = find_basic
+        add_to_graph(name, [j], '', '', t, '9')
             
     # flags: here already processed one statement after for or if
     if for_flag == 1 or if_flag == 1: 
@@ -444,26 +499,40 @@ for modelfile in files:
           print pop, '3 pop', if_stack, bracket_stack, if_flag      
         del if_stack[-1]
       
-      
   # postprocess
   # aggeragate integers with largest integer
   for k,v in graph.iteritems():
     flag = 0
+    flag1 = 0
     integers = []
-    for i in v:
-      if i.isdigit():
-        flag = 1
-        integers.append(int(i))
+    to_delete = []
+    for j in range(len(v)):
+      (p, dep) = v[j]
+      if not dep == 'indexing':
+        continue
+      # TODO: deal with sth like a[0,0] or a[1,2]
+      for i in p:
+        if i.isdigit():
+          flag = 1
+          integers.append(int(i))
+          to_delete.append(j)
+          break
+      for i in p:
+        if not i.isdigit() and var_type[i] == "int":
+           flag1 = 1
     if flag == 1:
-      for i in integers:
-          graph[k].remove(str(i))
-      if max(integers) > 1:
-        graph[k].add(max(integers))
+      for i in reversed(to_delete):
+        del graph[k][i]
+    if len(integers) > 0 and max(integers) > 1 and flag1 == 0:
+      graph[k].append((set([max(integers)]), "indexing"))
   
   print 'GRAPH:'
   for k,v in graph.iteritems():
-    print k, attr[k], var_type[k], v
-    graph[k] = list(v)
+    parents = []
+    for p, dep in v:
+      parents.append((list(p), dep))
+    graph[k] = parents
+    print k, attr[k], var_type[k], graph[k]
   print len(graph), len(attr), len(var_type)
   
   if write == 1:
@@ -476,9 +545,23 @@ for modelfile in files:
       flag = 0
       print 'Graph length is wrong: ', len(graph), len(chk_graph)
     for k,v in graph.iteritems():
-      if graph[k] <> chk_graph[k]:
-        flag = 0
-        print 'Graph is wrong: ',k, graph[k], chk_graph[k]
+      if len(graph[k])  <> len(chk_graph[k]):
+          print "WRONG:\t", k
+          print "GIVEN:\t", graph[k]
+          print "CORRECT:\t", chk_graph[k]
+          flag = 0
+          continue
+      for p,d in v:
+        f = 0
+        for a,b in graph[k]:
+          if a==p and d==b:
+            f = 1
+        if f == 0:
+          print "WRONG:\t", k
+          print "GIVEN:\t", graph[k]
+          print "CORRECT:\t", chk_graph[k]
+          flag = 0
+          break
     if flag == 0:
       check_results.append((modelfile, 'NO'))
       print 'Does not pass correction check.'
