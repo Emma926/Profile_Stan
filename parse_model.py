@@ -1,18 +1,19 @@
 # TODO: add user-defined functions
+# TODO: variable with the same name as distribution
 import json
 import os
 from distributions import *
 from functions import *
 
 # debugging flags
-line_print = 1 
-graph_print = 1
+line_print = 0 
+graph_print = 0
 for_print = 0
 if_print = 0
 bracket_print = 0
 
 write = 1
-check = 1
+check = 0
 
 skipped_files = []
 
@@ -32,7 +33,7 @@ for path in paths:
 #for f in files:
 #  print f
 
-files = ["/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.03/GLM_Binomial.stan"]
+files = ["/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.04/GLMM_Poisson2.stan"]
 output = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph'
 # adding a new data type, should not only add it here, but also add it in the preprocess func
 data_type = ['cov_matrix', 'simplex','real', 'int', 'vector', 'row_vector', 'matrix']
@@ -156,7 +157,7 @@ for modelfile in files:
     t = ''
     for w in line:
       # if a ~ normal(b+1), return distribution instead of basic computation
-      if w in distribution_type2:
+      if '~' in line and w in distribution_type2:
         t = distribution_higher_type[distribution_type2[w]]
         print 'find type', w, t 
         break
@@ -191,7 +192,6 @@ for modelfile in files:
     replace(' \\ ', '\\'). \
     replace('(', ' '). \
     replace(')', ' '). \
-    replace('~', ' ').\
     replace('\'',' '). \
     replace('<',' ').replace('>', ' ').split()).split(' ')
     
@@ -352,7 +352,7 @@ for modelfile in files:
         if '[' in newline[i]:
           to_process.append(i)
       # declaration with [], [] and var are not connected
-      # example: vector<lower=0>[N] a, or vector<lower=0>[T - 1] b, or matrix<lower=0,upper=1>[N, M] c 
+      # example: vector[T - 1] b, matrix[N, M] c
       if len(to_process) == 1 and newline[0] in data_type and '[' in newline[to_process[0]][0] == '[' and newline[to_process[0]][-1] == ']':
         name = newline[-1]
         # delete ops that can appear within []: +-*/:!,
@@ -364,10 +364,12 @@ for modelfile in files:
         add_to_graph(name, parents, state, newline[0], 'indexing', '1')
         to_process = []
       
+      
       if bracket_print == 1:
         print newline, to_process
       # bf[af]
       # or a[b[c]], a[b[c],d[e]], etc
+      # vector[N] a[M]
       for i in to_process:
         curr_statement = newline[i]
         while ']' in curr_statement:
@@ -404,9 +406,11 @@ for modelfile in files:
               mapped_var = a
             else:
               continue
-            # deal with sth like this: vector[nyears] year_squared;
-            # and vector[T - 1] lambda
-            if bf_bracket in data_type:
+            # vector[N] a[M]
+            if bf_bracket in data_type and '[' in newline[-1]:
+              add_to_graph(newline[-1].split('[')[0], [a], state, bf_bracket, 'indexing', '2')
+            # vector[nyears - 1] year_squared;
+            elif bf_bracket in data_type:
               add_to_graph(newline[-1], [a], state, bf_bracket, 'indexing', '2')
   
             if not bf_bracket in graph and newline[0] in data_type:
