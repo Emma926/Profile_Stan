@@ -1,7 +1,9 @@
 # reference: https://github.com/stan-dev/stan/releases/download/v2.14.0/stan-reference-2.14.0.pdf
+# the stan functions are from reference 2.8.0. Functions from 2.14.0 are very different and they are updated in functions.py
+
 # type high -> type hidden -> types
 # type hidden -> type high
-distribution_higher_type = {
+distribution_type = {
  "binary" : "discrete",
  "bounded discrete": "discrete",
  "unbounded discrete": "discrete",
@@ -21,7 +23,7 @@ distribution_higher_type = {
 
 # types -> type hidden
 # sampling statement: type      # stan functions
-distribution_type2 = {
+distributions = {
   "bernoulli": "binary",        # _log, _cdf, _cdf_log, _ccdf_log, _rng
   "bernoulli_logit": "binary",  # _log
   "binomial": "bounded discrete",      # _log, _cdf, _cdf_log, _ccdf_log, _rng

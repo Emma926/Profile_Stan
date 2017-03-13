@@ -33,7 +33,7 @@ for path in paths:
 #for f in files:
 #  print f
 
-files = ["/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.04/GLMM_Poisson2.stan"]
+files = ['/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.07/cjs_temp_corr.stan']
 output = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph'
 # adding a new data type, should not only add it here, but also add it in the preprocess func
 data_type = ['cov_matrix', 'simplex','real', 'int', 'vector', 'row_vector', 'matrix']
@@ -140,7 +140,6 @@ for modelfile in files:
       if graph_print == 1:
         print 'graph ', debug, node
     if not dependency in dependencies:
-      print 'No such dependency:', dependency
       return
     flag = 0
     for p,d in graph[node]:
@@ -157,17 +156,19 @@ for modelfile in files:
     t = ''
     for w in line:
       # if a ~ normal(b+1), return distribution instead of basic computation
-      if '~' in line and w in distribution_type2:
-        t = distribution_higher_type[distribution_type2[w]]
-        print 'find type', w, t 
+      if '~' in line and w in distributions:
+        t = distribution_type[distributions[w]]
+        if graph_print == 1:
+          print 'find type', w, t 
         break
       if w in functions:
         t = function_type[functions[w]]
-        print 'find type', w, t
+        if graph_print == 1:
+          print 'find type', w, t
         break
     return t
 
-  op_signs = ['%', '^', ':', ',', '.*', './', '+', '-', '/', '*', '<=', '<', '>=', ">", '==', '!=', '!', '&&', '||', '\\']
+  op_signs = ['%', '^', ':', ',', '.*', './', '+=', '-=', '/=', '*=', '+', '-', '/', '*', '<=', '<', '>=', ">", '==', '!=', '!', '&&', '||', '\\']
   def replace_op_signs(s):
     for i in op_signs:
       s = s.replace(i,' ')
@@ -182,6 +183,7 @@ for modelfile in files:
     # ignore whatever can appear within []
     newline = " ".join(line.strip('\n').strip(' ').replace(';', ' '). \
     replace(", ", ","). \
+  #  replace(' += ','+=').replace(' -= ','-=').replace(' *= ','*=').replace(' /= ','/='). \
     replace(' + ','+').replace(' - ', '-').replace(' / ', '/').replace(' * ','*'). \
     replace(" < ", "<").replace(' <= ','<=').replace(' > ', '>').replace(' >= ', '>='). \
     replace(" == ", "==").replace(' != ','!=').replace(' !', '!'). \
@@ -429,7 +431,9 @@ for modelfile in files:
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      for i in ['%', '.*', './', '+', '-', '/', '*', '&&', '||', '\\']:
+      if '=' in newlinecat:
+          find_basic = 'read'
+      for i in ['%', '.*', './', '+', '-', '/', '*', '&&', '||', '\\', '+=', '-=', '*=', '/=']:
         if i in newlinecat:
           find_basic = 'basic'
           break
@@ -465,13 +469,13 @@ for modelfile in files:
           t = find_keywords(newline)
           if t == "":
             t = find_basic
-          if not name in graph:
-            add_to_graph(name, [], 'not declared', 'not declared', t, '7')
+          #if not name in graph:
+          #  add_to_graph(name, [], 'not declared', 'not declared', t, '7')
           parents = []
           for k,v in graph.iteritems():
             if k in newline and k <> name:
               parents.append(k)
-          add_to_graph(name, parents, '', '', t, '8')
+          add_to_graph(name, parents, 'not declared', 'not declared', t, '8')
       if len(if_stack) > 0:
         parents = []
         for i in if_stack:
