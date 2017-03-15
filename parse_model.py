@@ -1,4 +1,3 @@
-# TODO: add user-defined functions
 import json
 import os
 from distributions import *
@@ -12,7 +11,7 @@ if_print = 0
 bracket_print = 0
 
 write = 1
-check = 1
+check = 0
 
 skipped_files = []
 
@@ -278,6 +277,7 @@ for modelfile in files:
       bracket_stack.append('for')
       if for_print == 1:
         print 'for loop:', newline
+        print graph
 
       # start to build for variable map
       flag = 0

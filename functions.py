@@ -174,7 +174,7 @@ functions = {
   "dims": "array size",
   "num_elements": "size",
   "size": "array size",
-  "rep_array": "array rep", 
+  "rep_array": "replicate", 
   "sort_asc": "array sort",
   "sort_desc": "array sort",
   "sort_indices_asc": "array sort",
