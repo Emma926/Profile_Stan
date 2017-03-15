@@ -4,14 +4,14 @@ from distributions import *
 from functions import *
 
 # debugging flags
-line_print = 0 
-graph_print = 0
+line_print = 1 
+graph_print = 1
 for_print = 0
 if_print = 0
 bracket_print = 0
 
 write = 1
-check = 0
+check = 1
 
 skipped_files = []
 
@@ -35,6 +35,7 @@ output = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph'
 # adding a new data type, should not only add it here, but also add it in the preprocess func
 data_type = ['cov_matrix', 'simplex','real', 'int', 'vector', 'row_vector', 'matrix']
 dependencies = set(['indexing', 'read', 'basic', 'complex', 'discrete', 'continuous'])
+op_signs = ['%', '^', ':', ',', '.*', './', '+=', '-=', '/=', '*=', '+', '-', '/', '*', '<=', '<', '>=', ">", '==', '!=', '!', '&&', '||', '\\']
 user_defined_functions = {}
 
 if check == 1:
@@ -65,6 +66,12 @@ for modelfile in files:
   for_stack_map = []
   if_stack = []
   if_stack_buffer = []
+
+  def hasfunction(line):
+    for i in line:
+      if i in functions:
+        return True
+    return False
   
   # deal with one statement in multiple lines
   # ignore comments
@@ -119,10 +126,12 @@ for modelfile in files:
       or 'simplex' in newline \
       or 'for' in newline \
       or 'if' in newline \
+      or 'else' in newline \
       or '{' in newline \
       or '}' in newline \
       or '=' in newline \
-      or '~' in newline:
+      or '~' in newline \
+      or hasfunction(newline) and not (line[0] in op_signs or lines[-1][-1] in op_signs):
         lines.append(line)
   
       else:
@@ -172,7 +181,6 @@ for modelfile in files:
         break
     return t
 
-  op_signs = ['%', '^', ':', ',', '.*', './', '+=', '-=', '/=', '*=', '+', '-', '/', '*', '<=', '<', '>=', ">", '==', '!=', '!', '&&', '||', '\\']
   def replace_op_signs(s):
     for i in op_signs:
       s = s.replace(i,' ')
