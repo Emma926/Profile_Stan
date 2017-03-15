@@ -1,5 +1,4 @@
 # TODO: add user-defined functions
-# TODO: variable with the same name as distribution
 import json
 import os
 from distributions import *
@@ -13,7 +12,7 @@ if_print = 0
 bracket_print = 0
 
 write = 1
-check = 0
+check = 1
 
 skipped_files = []
 
@@ -33,11 +32,11 @@ for path in paths:
 #for f in files:
 #  print f
 
-files = ['/Users/emma/Projects/Bayesian/profiling/stan_BPA/code/Ch.07/cjs_temp_corr.stan']
 output = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph'
 # adding a new data type, should not only add it here, but also add it in the preprocess func
 data_type = ['cov_matrix', 'simplex','real', 'int', 'vector', 'row_vector', 'matrix']
 dependencies = set(['indexing', 'read', 'basic', 'complex', 'discrete', 'continuous'])
+user_defined_functions = {}
 
 if check == 1:
   check_results = []
@@ -65,7 +64,6 @@ for modelfile in files:
   state = ''
   bracket_stack = []
   for_stack_map = []
-  iter_index = {}
   if_stack = []
   if_stack_buffer = []
   
@@ -100,8 +98,8 @@ for modelfile in files:
       replace('*',' '). \
       replace('!',' '). \
       replace('^',' '). \
-      replace('(', ' '). \
-      replace(')', ' '). \
+      replace('(', ' ( '). \
+      replace(')', ' ) '). \
       replace('\'',' '). \
       replace('<',' ').replace('>', ' ').split()).split(' ')
       
@@ -110,8 +108,10 @@ for modelfile in files:
         ind_a = line.index('<')
         ind_b = line.index('>')
         line = line[0:ind_a] + line[ind_b+1:]
-  
-      if 'real' in newline \
+
+      if ')' in newline and not '(' in newline:
+        lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
+      elif 'real' in newline \
       or 'int' in newline \
       or 'vector' in newline \
       or 'row_vector' in newline \
@@ -166,6 +166,11 @@ for modelfile in files:
         if graph_print == 1:
           print 'find type', w, t
         break
+      if w in user_defined_functions:
+        t = user_defined_functions[w]
+        if graph_print == 1:
+          print 'find type', w, t
+        break
     return t
 
   op_signs = ['%', '^', ':', ',', '.*', './', '+=', '-=', '/=', '*=', '+', '-', '/', '*', '<=', '<', '>=', ">", '==', '!=', '!', '&&', '||', '\\']
@@ -174,11 +179,10 @@ for modelfile in files:
       s = s.replace(i,' ')
     return s
   
-      
   lines = preprocess(model)
   #for line in lines:
   #  print line
-  
+
   for line in lines:
     # ignore whatever can appear within []
     newline = " ".join(line.strip('\n').strip(' ').replace(';', ' '). \
@@ -196,7 +200,6 @@ for modelfile in files:
     replace(')', ' '). \
     replace('\'',' '). \
     replace('<',' ').replace('>', ' ').split()).split(' ')
-    
   
     if 'transformed' == newline[0] and 'parameters' == newline[1] and '{' in newline:
       bracket_stack.append('transformed parameters')
@@ -227,6 +230,11 @@ for modelfile in files:
       continue
 
     if state == "functions":
+      # collecting function names
+      # find a function declaration
+      print newline
+      if newline[0] in data_type and '{' in newline:
+        user_defined_functions[newline[1]] = 'complex'
       continue
   
     if line_print == 1:
@@ -243,7 +251,6 @@ for modelfile in files:
       if pop == 'for':
         if for_print == 1:
           print 'for 2 pop', for_stack_map[-1]
-        iter_index.pop(for_stack_map[-1][0], None)
         del for_stack_map[-1]
       if pop == 'if' or pop == 'else if' or pop == 'else':
         if if_print == 1:
@@ -280,7 +287,6 @@ for modelfile in files:
         if k in newline:
             # mapp temp var to real var
             for_stack_map.append((newline[1], k))
-            iter_index[newline[1]] = len(for_stack_map)-1
             flag = 1
             if for_print == 1:
               print 'for 1 push', for_stack_map[-1]
@@ -290,7 +296,6 @@ for modelfile in files:
         for k,v in for_stack_map:
           if k in newline:
             to_add.append((newline[1], v))
-            iter_index[newline[1]] = len(for_stack_map) + len(to_add) -1
             flag = 1
             if for_print == 1:
               print 'for 2 push', to_add[-1]
@@ -301,7 +306,6 @@ for modelfile in files:
         if not newline[-2].isdigit():
           print 'ATTENTION this for loop mapping is strange!'
         for_stack_map.append((newline[1], newline[-2]))
-        iter_index[newline[1]] = len(for_stack_map) -1
         flag = 1
         if for_print == 1:
           print 'for 3 push', for_stack_map[-1]
@@ -400,14 +404,22 @@ for modelfile in files:
             print in_bracket, bf_bracket, index_c, index_b, index_a
   
           for a in in_bracket:
+            if bracket_print == 1:
+              print 'current in []:', a
             # in a for loop and the index is an index of the loop
-            if len(for_stack_map) > 0 and a in iter_index and iter_index[a] < len(for_stack_map):
-              mapped_var = for_stack_map[iter_index[a]][1]
+            mapped_var = []
+            if len(for_stack_map) > 0:
+              if bracket_print == 1:
+                print for_stack_map
+              for tmp in for_stack_map:
+                if tmp[0] == a:
+                  mapped_var.append(tmp[1])
             # not in a for loop or the index does not belong to the loop
-            elif a in graph or a.isdigit() and len(in_bracket) == 1:
-              mapped_var = a
-            else:
+            if mapped_var == [] and  a in graph or a.isdigit() and len(in_bracket) == 1:
+              mapped_var = [a]
+            if mapped_var == []:
               continue
+            
             # vector[N] a[M]
             if bf_bracket in data_type and '[' in newline[-1]:
               add_to_graph(newline[-1].split('[')[0], [a], state, bf_bracket, 'indexing', '2')
@@ -418,7 +430,8 @@ for modelfile in files:
             if not bf_bracket in graph and newline[0] in data_type:
               add_to_graph(bf_bracket, [], state, newline[0], '', '3')
             if bf_bracket in graph:
-              add_to_graph(bf_bracket, [mapped_var], '', '', 'indexing', '4')
+              for tmp in mapped_var:
+                add_to_graph(bf_bracket, [tmp], '', '', 'indexing', '4')
 
           # delete the [] and contents between them
           new_str = curr_statement[0:index_b] + curr_statement[index_a+1:]
@@ -481,10 +494,7 @@ for modelfile in files:
         for i in if_stack:
           for j in i:
             parents.append(j)
-        t = find_keywords(newline)
-        if t == "":
-          t = find_basic
-        add_to_graph(name, [j], '', '', t, '9')
+        add_to_graph(name, parents, '', '', 'basic', '9')
             
     # flags: here already processed one statement after for or if
     if for_flag == 1 or if_flag == 1: 
@@ -497,7 +507,6 @@ for modelfile in files:
         for_flag = 0
         if for_print == 1:
           print 'for 3 pop', for_stack_map[-1]
-        iter_index.pop(for_stack_map[-1][0], None)
         del for_stack_map[-1]
       if pop == 'if' or pop == 'else if':
         if_stack_buffer = if_stack[-1][:]
@@ -534,7 +543,7 @@ for modelfile in files:
     if len(integers) > 0 and max(integers) > 1 and flag1 == 0:
       graph[k].append((set([max(integers)]), "indexing"))
   
-  print 'GRAPH:'
+  print '\nGRAPH:'
   for k,v in graph.iteritems():
     parents = []
     for p, dep in v:
@@ -542,7 +551,9 @@ for modelfile in files:
     graph[k] = parents
     print k, attr[k], var_type[k], graph[k]
   print len(graph), len(attr), len(var_type)
-  
+  print '\nUSER_DEFINED_FUNCTIONS:'
+  print user_defined_functions
+
   if write == 1:
     with open(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.probgraph')), 'w') as fout:
       json.dump([graph, attr, var_type], fout)

@@ -32,6 +32,7 @@ This project contains the following files:
 9.  simply deal with functions{} (e.g. Ch.07/cjs_add.stan) by adding a connection between returned value and arguments
 10. a more sophisticated way to solve this is to build a graph for each functions, and map variables accordingly whenever the function is called
 11.  works for 69 model files in BPA, verified 17 files
+12.  variables assigned within if statement, are dependent on the variables in if conditions. Dependency type is basic.
 
 
 Emma Wang
