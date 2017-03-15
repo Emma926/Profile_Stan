@@ -153,7 +153,7 @@ functions = {
   "multiply_log": "composed",
   "lmultiply": "composed",
   "loglp": "composed",
-  "loglm": "composed",
+  "log1m": "composed",
   "log1p_exp": "composed",
   "log1m_exp": "composed",
   "log_diff_exp": "composed",
