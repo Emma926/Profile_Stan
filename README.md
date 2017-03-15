@@ -35,6 +35,7 @@ This project contains the following files:
 12.  works for 69 model files in BPA, verified 17 files
 13.  variables assigned within if statement, are dependent on the variables in if conditions. Dependency type is basic.
 14.  variables declared within for loops, are dependent on the loop indices; the dependency is indexing
+15.  we add indexing dependency for one variable at a time. For example (['a', 'b'], 'indexing') should be converted to (['a'], 'indexing'), (['b'], 'indexing')
 
 
 Emma Wang
