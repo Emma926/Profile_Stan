@@ -30,9 +30,11 @@ This project contains the following files:
 7.  does not work for one statement with {} in one line
 8.  does not support /* or */ appearing after statements
 9.  simply deal with functions{} (e.g. Ch.07/cjs_add.stan) by adding a connection between returned value and arguments
-10. a more sophisticated way to solve this is to build a graph for each functions, and map variables accordingly whenever the function is called
-11.  works for 69 model files in BPA, verified 17 files
-12.  variables assigned within if statement, are dependent on the variables in if conditions. Dependency type is basic.
+10. the dependency belongs to complex
+11. (a more sophisticated way to solve this is to build a graph for each functions, and map variables accordingly whenever the function is called)
+12.  works for 69 model files in BPA, verified 17 files
+13.  variables assigned within if statement, are dependent on the variables in if conditions. Dependency type is basic.
+14.  variables declared within for loops, are dependent on the loop indices; the dependency is indexing
 
 
 Emma Wang

@@ -463,18 +463,17 @@ for modelfile in files:
           if t == "":
             t = find_basic
           add_to_graph(name, parents, state, newline[0], t, '5')
+          if len(for_stack_map) > 0:
+            for i in for_stack_map:
+              add_to_graph(name, [i[1]], state, newline[0], 'indexing', '6')
       # declaration, e.g. int a;
       elif newline[0] in data_type and not newline[-1] in graph: 
           name = newline[-1]
           # if within loop(s), this var is dependent on the loop indices
-          parents = []
+          add_to_graph(name, [], state, newline[0], '', '7')
           if len(for_stack_map) > 0:
             for i in for_stack_map:
-              parents.append(i[1]) 
-          t = find_keywords(newline)
-          if t == "":
-            t = find_basic
-          add_to_graph(name, parents, state, newline[0], t, '6')
+              add_to_graph(name, [i[1]], state, newline[0], 'indexing', '8')
       # computation, e.g. a = b - 1
       elif not newline[0] in data_type:                  
           name = newline[0]
@@ -488,13 +487,13 @@ for modelfile in files:
           for k,v in graph.iteritems():
             if k in newline and k <> name:
               parents.append(k)
-          add_to_graph(name, parents, 'not declared', 'not declared', t, '8')
+          add_to_graph(name, parents, 'not declared', 'not declared', t, '9')
       if len(if_stack) > 0:
         parents = []
         for i in if_stack:
           for j in i:
             parents.append(j)
-        add_to_graph(name, parents, '', '', 'basic', '9')
+        add_to_graph(name, parents, '', '', 'basic', '10')
             
     # flags: here already processed one statement after for or if
     if for_flag == 1 or if_flag == 1: 
