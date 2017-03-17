@@ -1,7 +1,11 @@
 # Graphical Model Profiling Tools
-modify model_parser_wrapper.py as needed, and run
-python model_parser_wrapper.py
+This tool converts stan model file as input, output variable dependencies as graph structure.
 
+# Getting Start
+modify model_parser_wrapper.py as needed, and run
+'''
+python model_parser_wrapper.py
+''
 ## Probabilistic Graph Data Structure
 parse_model.py stores probability graph ending with .probgraph.
 It streams graph into a json file.
