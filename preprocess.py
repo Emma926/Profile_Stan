@@ -35,7 +35,6 @@ def preprocess(model, printresult = 0):
       if '{' in line and not ' {' in line:
         line = line.replace('{', ' {')
 
-      print line
       newline = " ".join(line.strip('\n').strip(' ').replace(';', ' '). \
       replace(",", " ").replace(":", " "). \
       replace("[", " ").replace("]", " "). \
@@ -60,6 +59,8 @@ def preprocess(model, printresult = 0):
 
       if ')' in newline and not '(' in newline:
         lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
+      elif 'increment_log_prob' == newline[0]:
+        lines.append('target = ' + line)  
       elif 'real' in newline \
       or 'int' in newline \
       or 'vector' in newline \
