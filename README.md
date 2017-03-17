@@ -1,17 +1,17 @@
 # Graphical Model Profiling Tools
 modify model_parser_wrapper.py as needed, and run
-  python model_parser_wrapper.py
+python model_parser_wrapper.py
 
 ## Probability Graph Data Structure
-  parse_model.py stores probability graph ending with .probgraph.
-  It streams graph into a json file.
-  The data structure is:
-    {node: [([parents], dependency_type)]}
-  where 
-    dependency_type:
-      indexing, 
-      simple/complex computation,
-      discrete/continuous distribution
+parse_model.py stores probability graph ending with .probgraph.
+It streams graph into a json file.
+The data structure is:
+* {node: [([parents], dependency_type)]}
+where 
+* dependency_type:
+  + indexing, 
+  + simple/complex computation,
+  + discrete/continuous distribution
 
 
 
@@ -32,8 +32,15 @@ modify model_parser_wrapper.py as needed, and run
 13.  variables assigned within if statement, are dependent on the variables in if conditions. Dependency type is basic.
 14.  variables declared within for loops, are dependent on the loop indices; the dependency is indexing
 15.  we add indexing dependency for one variable at a time. For example (['a', 'b'], 'indexing') should be converted to (['a'], 'indexing'), (['b'], 'indexing')
+16.  does not work for for statement without {} followed by more than one statement, example:
+    28   for (n in 1:nmax)
+    29     if (n < nmin)
+    30       lp_parts[n] <- log(1.0 / nmax) + negative_infinity();  // Zero probability
+    31     else
+    32       lp_parts[n] <- log(1.0 / nmax) + binomial_log(k, n, theta);
+17.  does not work for if/for statements, whoes { is in a new line
 
 
 Emma Wang
-Originally on Feb 24th, 2017
-Updated on March 7th, 2017
+Originally on Feb 24th, 2017,
+Updated on March 17th, 2017.
