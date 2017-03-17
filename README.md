@@ -2,7 +2,7 @@
 modify model_parser_wrapper.py as needed, and run
 python model_parser_wrapper.py
 
-## Probability Graph Data Structure
+## Probabilistic Graph Data Structure
 parse_model.py stores probability graph ending with .probgraph.
 It streams graph into a json file.
 The data structure is:
