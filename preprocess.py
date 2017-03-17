@@ -8,7 +8,7 @@ def hasfunction(line):
       if i in functions:
         return True
     return False
-def preprocess(model):
+def preprocess(model, printresult = 0):
     # if a line does not have key words, = or ~, combine it with previous line
     lines = []
     ignore = 0
@@ -80,4 +80,7 @@ def preprocess(model):
       else:
         lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
   
+    if printresult == 1:
+      for line in lines:
+        print line
     return lines
