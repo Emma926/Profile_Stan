@@ -1,6 +1,7 @@
 import json
 import os
 from parser import *
+from preprocess import *
 
 # debugging flags
 line_print = 0 
@@ -10,27 +11,32 @@ if_print = 0
 bracket_print = 0
 
 write = 1
-check = 1
+check = 0
 
 skipped_files = []
 
-root = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/code'
+root = '/Users/emma/Projects/Bayesian/profiling/stan_bugs/code'
 paths = []
 files = []
 # find all the paths
 fs = os.listdir(root)
-for f in fs:
-    if 'Ch' in f:
-      paths.append(os.path.join(root, f))
+for vol in fs:
+    if 'vol' in vol:
+      subdirs = os.listdir(os.path.join(root, vol))
+      for d in subdirs:
+        paths.append(os.path.join(root, vol, d))
 for path in paths:
   fs = os.listdir(path)
   for f in fs:
     if '.stan' in f:
       files.append(os.path.join(path, f))
+
 #for f in files:
 #  print f
+#print len(files)
 
-output = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph'
+files = ['/Users/emma/Projects/Bayesian/profiling/stan_bugs/code/vol1/bones/bones.stan']
+output = '/Users/emma/Projects/Bayesian/profiling/stan_bugs/outputs/probgraph'
 
 if check == 1:
   check_results = []
@@ -47,81 +53,7 @@ for modelfile in files:
     with open(modelfile.replace('.stan', '.probgraph')) as fin:
          [chk_graph, chk_attr, chk_var_type] = json.load(fin)
     
-  def hasfunction(line):
-    for i in line:
-      if i in functions:
-        return True
-    return False
   
-  # deal with one statement in multiple lines
-  # ignore comments
-  def preprocess(model):
-    # if a line does not have key words, = or ~, combine it with previous line
-    lines = []
-    ignore = 0
-    for line in model:
-      line = line.strip('\n').strip(' ')
-      if "*/" in line:
-        ignore = 0
-        continue
-      if line == '' or ignore == 1:
-        continue
-      if line.strip(' ')[0] == '/' and line.strip(' ')[1] == '/':
-        continue
-      if '//' in line:
-        line = line.split('//')[0].strip(' ')  
-      if '/*' in line:
-        ignore = 1
-  
-      line = line.replace('<-', "=")
-      if '{' in line and not ' {' in line:
-        line = line.replace('{', ' {')
-
-      newline = " ".join(line.strip('\n').strip(' ').replace(';', ' '). \
-      replace(",", " ").replace(":", " "). \
-      replace("[", " ").replace("]", " "). \
-      replace('+',' '). \
-      replace('.*',' '). \
-      replace('<-', ' ').\
-      replace('-', ' '). \
-      replace('/', ' '). \
-      replace('*',' '). \
-      replace('!',' '). \
-      replace('^',' '). \
-      replace('(', ' ( '). \
-      replace(')', ' ) '). \
-      replace('\'',' '). \
-      replace('<',' ').replace('>', ' ').split()).split(' ')
-      
-      # declaration, delete <> and contents in between
-      if newline[0] in data_type and '<' in line and '>' in line:
-        ind_a = line.index('<')
-        ind_b = line.index('>')
-        line = line[0:ind_a] + line[ind_b+1:]
-
-      if ')' in newline and not '(' in newline:
-        lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
-      elif 'real' in newline \
-      or 'int' in newline \
-      or 'vector' in newline \
-      or 'row_vector' in newline \
-      or 'matrix' in newline \
-      or 'cov_matrix' in newline \
-      or 'simplex' in newline \
-      or 'for' in newline \
-      or 'if' in newline \
-      or 'else' in newline \
-      or '{' in newline \
-      or '}' in newline \
-      or '=' in newline \
-      or '~' in newline \
-      or hasfunction(newline) and not (line[0] in op_signs or lines[-1][-1] in op_signs):
-        lines.append(line)
-  
-      else:
-        lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
-  
-    return lines
 
   lines = preprocess(model)
   model.close()

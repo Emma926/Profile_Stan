@@ -43,6 +43,7 @@ where
     31     else
     32       lp_parts[n] <- log(1.0 / nmax) + binomial_log(k, n, theta);
 17.  does not work for if/for statements, whoes { is in a new line
+18.  when calling increment_log_prob(), construct a 'target' variable to hold the value
 
 
 Emma Wang
