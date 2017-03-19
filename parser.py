@@ -119,7 +119,11 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       # collecting function names
       # find a function declaration
       print newline
+      if '[' in newline[0]:
+        newline[0] = newline[0].replace('[', '').replace(']','')
       if newline[0] in data_type and '{' in newline:
+        #func_name = newline
+        print 'function:', newline[1]
         user_defined_functions[newline[1]] = 'complex'
       continue
   

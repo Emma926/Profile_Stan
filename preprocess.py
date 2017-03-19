@@ -12,6 +12,7 @@ def preprocess(model, printresult = 0):
     # if a line does not have key words, = or ~, combine it with previous line
     lines = []
     ignore = 0
+    incomplete_flag = 0
     for line in model:
       line = line.strip('\n').strip(' ')
       if "*/" in line:
@@ -57,10 +58,16 @@ def preprocess(model, printresult = 0):
         ind_b = line.index('>')
         line = line[0:ind_a] + line[ind_b+1:]
 
-      if ')' in newline and not '(' in newline:
+      if ')' in line and not '(' in line:
+        incomplete_flag = 0
         lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
+      elif '(' in line and not ')' in line:
+        incomplete_flag = 1
+        lines.append(line)
       elif 'increment_log_prob' == newline[0]:
         lines.append('target = ' + line)  
+      elif incomplete_flag == 1:
+        lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
       elif 'real' in newline \
       or 'int' in newline \
       or 'vector' in newline \
