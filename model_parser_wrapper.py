@@ -1,5 +1,6 @@
 import json
 import os
+import fnmatch
 from parser import *
 from preprocess import *
 
@@ -16,20 +17,10 @@ check = 0
 skipped_files = []
 
 root = '/Users/emma/Projects/Bayesian/profiling/stan_bugs/code'
-paths = []
 files = []
-# find all the paths
-fs = os.listdir(root)
-for vol in fs:
-    if 'vol' in vol:
-      subdirs = os.listdir(os.path.join(root, vol))
-      for d in subdirs:
-        paths.append(os.path.join(root, vol, d))
-for path in paths:
-  fs = os.listdir(path)
-  for f in fs:
-    if '.stan' in f:
-      files.append(os.path.join(path, f))
+for root, dirnames, filenames in os.walk(root):
+    for filename in fnmatch.filter(filenames, '*.stan'):
+        files.append(os.path.join(root, filename))
 
 #for f in files:
 #  print f
