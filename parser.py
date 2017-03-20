@@ -117,9 +117,12 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
     if state == "functions":
       # collecting function names
       # find a function declaration
+      newlinecat = ''
+      for i in newline:
+        newlinecat += i + ' '
+      newlinecat = newlinecat.strip(' ')
+      newline = replace_op_signs(newlinecat).replace(']',' ').replace('[', ' ').split(' ')
       print newline
-      if '[' in newline[0]:
-        newline[0] = newline[0].replace('[', '').replace(']','')
       if newline[0] in data_type and '{' in line:
         #func_name = newline
         print 'function:', newline[1]
