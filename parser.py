@@ -78,13 +78,11 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
     replace(" == ", "==").replace(' != ','!=').replace(' !', '!'). \
     replace(" && ", "&&").replace(' || ','||'). \
     replace(' .* ','.*').replace(' ./ ','./'). \
-    replace('<-', ' ').\
     replace(' % ', '%'). \
     replace(' \\ ', '\\'). \
-    #replace('(', ' '). \
-    #replace(')', ' '). \
+    replace('{', ' { '). \
     replace('\'',' '). \
-    replace('<',' ').replace('>', ' ').split()).split(' ')
+    replace('<',' ').replace('>', ' ').split()).strip(' ').split(' ')
   
     if 'transformed' == newline[0] and 'parameters' == newline[1] and '{' in newline:
       bracket_stack.append('transformed parameters')
@@ -121,7 +119,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      newline = replace_op_signs(newlinecat).replace(']',' ').replace('[', ' ').split(' ')
+      newline = " ".join(replace_op_signs(newlinecat).replace(']',' ').replace('[', ' ').split()).split(' ')
       print newline
       if newline[0] in data_type and '{' in line:
         #func_name = newline
@@ -160,7 +158,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
     newlinecat = newlinecat.strip(' ')
     newline = newlinecat.replace('}',' ').split(' ')    
 
-    if 'for' in newline:
+    if 'for' in newline[0]:
       # now delete the ops that can appear in [], assume for statement does not have []
       # assume one mapping in one for statement only
       # include , + - * / :
@@ -168,7 +166,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      newline = replace_op_signs(newlinecat).replace(']',' ').replace('[', ' ').split(' ')
+      newline = " ".join(replace_op_signs(newlinecat).replace(']',' ').replace('[', ' ').split()).split(' ')
       bracket_stack.append('for')
       if for_print == 1:
         print 'for loop:', newline
@@ -207,7 +205,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       if not '{' in newline:
         for_flag = 1
       continue
-    elif 'if' in newline:  # if and else if fall into here  
+    elif 'if' in newline[0]:  # if and else if fall into here  
       # ignore [] in if statement for now
       # assume if and else are in {}
       # there can appear multiple variables in one if statement, push them all together
@@ -224,7 +222,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       for i in newline:
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
-      newline = replace_op_signs(newlinecat).replace('[', ' ').replace(']',' ').split(' ')
+      newline = " ".join(replace_op_signs(newlinecat).replace('[', ' ').replace(']',' ').split()).split(' ')
       to_push = []
       for k,v in graph.iteritems():
         if k in newline:
@@ -257,7 +255,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       if len(to_process) == 1 and newline[0] in data_type and '[' in newline[to_process[0]][0] == '[' and newline[to_process[0]][-1] == ']':
         name = newline[-1]
         # delete ops that can appear within []:,
-        var = replace_op_signs(newline[to_process[0]][1:-1]).split(' ')
+        var = " ".join(replace_op_signs(newline[to_process[0]][1:-1]).split()).split(' ')
         parents = []
         for v in var:
           if v in graph:
@@ -292,7 +290,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
               break
           # find the content bewteen []
           # delete ops that can appear within []: +-*/:,
-          in_bracket = replace_op_signs(curr_statement[index_b + 1: index_a]).split(' ')
+          in_bracket = " ".join(replace_op_signs(curr_statement[index_b + 1: index_a]).split()).split(' ')
           # find the var before this []
           bf_bracket = curr_statement[index_c: index_b]
           if bracket_print == 1:
@@ -345,7 +343,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
         if i in newlinecat:
           find_basic = 'basic'
           break
-      newline = replace_op_signs(newlinecat).split(' ')
+      newline = " ".join(replace_op_signs(newlinecat).split()).split(' ')
       # var outside of []
       
       # declaration with computation, e.g. int a = b - 1;
