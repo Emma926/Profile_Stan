@@ -28,7 +28,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       attr[node] = att
       var_type[node] = var_ty
       if graph_print == 1:
-        print 'graph ', debug, node
+        print 'graph', debug, node, att, var_ty
     if not dependency in dependencies:
       return
     flag = 0
@@ -39,7 +39,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
     if flag == 0:
       graph[node].append((set(parents), dependency))
     if graph_print == 1:
-        print 'graph ', debug, node, parents
+        print 'graph', debug, node, parents, dependency
 
   # find distribution or function names, return type
   def find_keywords(line): 
@@ -63,9 +63,12 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
         break
     return t
 
+  # if line is a str, there are problems if line contains data type words, like perintc etc.
   def has_datatype(line):
+    newline = line[:]
+    newline = replace_op_signs(newline).split(' ') 
     for i in data_type:
-      if i in line:
+      if i in newline:
         return True
     return False
       
@@ -288,10 +291,10 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
             break
         in_bracket = curr_statement[index_b + 1: index_a]
         var = " ".join(replace_op_signs(in_bracket).split()).split(' ')
+        newline[to_process[0]] = curr_statement[0:index_b]
         for v in var:
           if v in graph or v.isdigit():
-            add_to_graph(name, [v], state, newline[0], 'indexing', '1')
-        newline[to_process[0]] = curr_statement[0:index_b]
+            add_to_graph(name, [v], state, newline[to_process[0]], 'indexing', '1')
       
       
       if bracket_print == 1:
@@ -474,7 +477,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       for i in reversed(to_delete):
         del graph[k][i]
     if len(integers) > 0 and max(integers) > 1 and flag1 == 0:
-      graph[k].append((set([max(integers)]), "indexing"))
+      graph[k].append((set([str(max(integers))]), "indexing"))
 
   # check the graph
   invalid = 0
@@ -495,9 +498,13 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       for p in parent:
         if p in all_vars:
           all_vars.remove(p)
+    if not var_type[k] in data_type and not var_type[k] == 'not declared':
+      print 'No such data type:', var_type[k]
+      invalid = 4
   if invalid == 0 and len(all_vars) > 0:
     invalid = 3
     print '!Unconnected variables:', list(all_vars)
+  
 
   print '\n' + str(len(user_defined_functions)) + ' user defined functions:'
   print user_defined_functions

@@ -5,11 +5,11 @@ from parser import *
 from preprocess import *
 
 # debugging flags
-line_print = 0 
-graph_print = 0
+line_print = 1 
+graph_print = 1
 for_print = 0
 if_print = 0
-bracket_print = 0
+bracket_print = 1
 
 write = 1
 check = 0
@@ -23,6 +23,10 @@ invalid_graphs_type2 = []
 # unconnected variables
 invalid_models_type3 = []
 invalid_graphs_type3 = []
+# invalid data type
+invalid_models_type4 = []
+invalid_graphs_type4 = []
+
 
 root = '../code'
 files = []
@@ -68,6 +72,9 @@ for modelfile in files:
   if invalid == 3:
     invalid_models_type3.append(modelfile)
     invalid_graphs_type3.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.probgraph')))
+  if invalid == 4:
+    invalid_models_type4.append(modelfile)
+    invalid_graphs_type4.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.probgraph')))
   
   print '\nGRAPH:'
   for k,v in graph.iteritems():
@@ -130,3 +137,6 @@ print invalid_graphs_type2
 print '3. Invalid file, unconnected variables'
 print invalid_models_type3
 print invalid_graphs_type3
+print '4. Invalid file, invalid data type'
+print invalid_models_type4
+print invalid_graphs_type4
