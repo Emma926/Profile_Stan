@@ -3,7 +3,7 @@ from functions import *
 # adding a new data type, should not only add it here, but also add it in the preprocess
 data_type = ['cov_matrix', 'corr_matrix', 'cholesky_factor_cov', 'cholesky_factor_corr', 'unit_vector','ordered','positive_ordered', 'simplex','real', 'int', 'vector', 'row_vector', 'matrix']
 dependencies = set(['indexing', 'read', 'basic', 'complex', 'discrete', 'continuous'])
-op_signs = ['%', '^', ':', ',', '.*', './', '+=', '-=', '/=', '*=', '+', '-', '/', '*', '<=', '<', '>=', ">", '==', '!=', '!', '&&', '||', '\\']
+op_signs = ['(', ')', '%', '^', ':', ',', '.*', './', '+=', '-=', '/=', '*=', '+', '-', '/', '*', '<=', '<', '>=', ">", '==', '!=', '!', '&&', '||', '\\']
 
 def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
 
@@ -81,8 +81,8 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
     replace('<-', ' ').\
     replace(' % ', '%'). \
     replace(' \\ ', '\\'). \
-    replace('(', ' '). \
-    replace(')', ' '). \
+    #replace('(', ' '). \
+    #replace(')', ' '). \
     replace('\'',' '). \
     replace('<',' ').replace('>', ' ').split()).split(' ')
   
@@ -124,6 +124,8 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
         #func_name = newline
         print 'function:', newline[1]
         user_defined_functions[newline[1]] = 'complex'
+        if '}' in line:
+          user_defined_functions[newline[1]] = 'basic'
       continue
   
     if line_print == 1:
@@ -251,7 +253,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       # example: vector[T - 1] b, matrix[N, M] c
       if len(to_process) == 1 and newline[0] in data_type and '[' in newline[to_process[0]][0] == '[' and newline[to_process[0]][-1] == ']':
         name = newline[-1]
-        # delete ops that can appear within []: +-*/:!,
+        # delete ops that can appear within []:,
         var = replace_op_signs(newline[to_process[0]][1:-1]).split(' ')
         parents = []
         for v in var:
