@@ -1,7 +1,7 @@
 from distributions import *
 from functions import *
-# adding a new data type, should not only add it here, but also add it in the preprocess func
-data_type = ['cov_matrix', 'simplex','real', 'int', 'vector', 'row_vector', 'matrix']
+# adding a new data type, should not only add it here, but also add it in the preprocess
+data_type = ['cov_matrix', 'corr_matrix', 'cholesky_factor_cov', 'cholesky_factor_corr', 'unit_vector','ordered','positive_ordered', 'simplex','real', 'int', 'vector', 'row_vector', 'matrix']
 dependencies = set(['indexing', 'read', 'basic', 'complex', 'discrete', 'continuous'])
 op_signs = ['%', '^', ':', ',', '.*', './', '+=', '-=', '/=', '*=', '+', '-', '/', '*', '<=', '<', '>=', ">", '==', '!=', '!', '&&', '||', '\\']
 
@@ -343,6 +343,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
           break
       newline = replace_op_signs(newlinecat).split(' ')
       # var outside of []
+      
       # declaration with computation, e.g. int a = b - 1;
       if newline[0] in data_type and '=' in newline:
           name = newline[1]
@@ -368,6 +369,16 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       # computation, e.g. a = b - 1
       elif not newline[0] in data_type:                  
           name = newline[0]
+          # deal with sth like to_vector(beta) ~ normal(0, 5);
+          if not name in graph and not name == 'target' and newline[0] in functions:
+            del newline[0]
+            print newline
+            print graph
+            for i in newline:
+              if i in graph:
+                print 'real var:', i
+                name = i
+                break
           # if the dest variable is not declared
           t = find_keywords(newline)
           if t == "":

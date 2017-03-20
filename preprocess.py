@@ -1,7 +1,7 @@
 # deal with one statement in multiple lines
 # ignore comments
 from functions import *
-data_type = ['cov_matrix', 'simplex','real', 'int', 'vector', 'row_vector', 'matrix']
+data_type = ['cov_matrix', 'corr_matrix', 'cholesky_factor_cov', 'cholesky_factor_corr', 'unit_vector','ordered','positive_ordered', 'simplex','real', 'int', 'vector', 'row_vector', 'matrix']
 op_signs = ['%', '^', ':', ',', '.*', './', '+=', '-=', '/=', '*=', '+', '-', '/', '*', '<=', '<', '>=', ">", '==', '!=', '!', '&&', '||', '\\']
 def hasfunction(line):
     for i in line:
@@ -52,6 +52,12 @@ def preprocess(model, printresult = 0):
       replace('\'',' '). \
       replace('<',' ').replace('>', ' ').split()).split(' ')
       
+      def in_datatype(line):
+        for i in data_type:
+          if i in line:
+            return True
+        return False
+      
       # declaration, delete <> and contents in between
       if newline[0] in data_type and '<' in line and '>' in line:
         ind_a = line.index('<')
@@ -68,13 +74,7 @@ def preprocess(model, printresult = 0):
         lines.append('target = ' + line)  
       elif incomplete_flag == 1:
         lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
-      elif 'real' in newline \
-      or 'int' in newline \
-      or 'vector' in newline \
-      or 'row_vector' in newline \
-      or 'matrix' in newline \
-      or 'cov_matrix' in newline \
-      or 'simplex' in newline \
+      elif in_datatype(newline) \
       or 'for' in newline \
       or 'if' in newline \
       or 'else' in newline \
