@@ -63,6 +63,13 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
         break
     return t
 
+  def has_datatype(line):
+    for i in data_type:
+      if i in line:
+        return True
+    return False
+      
+
   def replace_op_signs(s):
     for i in op_signs:
       s = s.replace(i,' ')
@@ -120,7 +127,6 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
         newlinecat += i + ' '
       newlinecat = newlinecat.strip(' ')
       newline = " ".join(replace_op_signs(newlinecat).replace(']',' ').replace('[', ' ').split()).split(' ')
-      print newline
       if newline[0] in data_type and '{' in line:
         #func_name = newline
         print 'function:', newline[1]
@@ -252,16 +258,27 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
           to_process.append(i)
       # declaration with [], [] and var are not connected
       # example: vector[T - 1] b, matrix[N, M] c
-      if len(to_process) == 1 and newline[0] in data_type and '[' in newline[to_process[0]][0] == '[' and newline[to_process[0]][-1] == ']':
-        name = newline[-1]
-        # delete ops that can appear within []:,
-        var = " ".join(replace_op_signs(newline[to_process[0]][1:-1]).split()).split(' ')
-        parents = []
+      # vector[n_occ_minus_1] cprob  = seq_cprob(gamma[:n_occ_minus_1]);
+      if len(to_process) > 0 and has_datatype(newline[to_process[0]]) and '[' in newline[to_process[0]] and newline[to_process[0]][-1] == ']':
+        curr_statement = newline[to_process[0]]
+        if '[' in newline[1]:
+          ind = newline[1].index('[')
+          name = newline[1][0:ind]
+        else:
+          name = newline[1]
+        # find the first ]
+        index_a = curr_statement.index(']')
+        # find the [ before the first ]
+        for j in range(index_a-1, -1, -1):
+          if curr_statement[j] == '[':
+            index_b = j
+            break
+        in_bracket = curr_statement[index_b + 1: index_a]
+        var = " ".join(replace_op_signs(in_bracket).split()).split(' ')
         for v in var:
-          if v in graph:
-            parents.append(v)
-        add_to_graph(name, parents, state, newline[0], 'indexing', '1')
-        to_process = []
+          if v in graph or v.isdigit():
+            add_to_graph(name, [v], state, newline[0], 'indexing', '1')
+        newline[to_process[0]] = curr_statement[0:index_b]
       
       
       if bracket_print == 1:
@@ -446,6 +463,29 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
     if len(integers) > 0 and max(integers) > 1 and flag1 == 0:
       graph[k].append((set([max(integers)]), "indexing"))
 
+  # check the graph
+  invalid = 0
+  all_vars = set()
+  for k,v in graph.iteritems():
+    if k in data_type or k in functions:
+      print '!Suspicious variable:', k
+      invalid = 1
+    for i in op_signs:
+      if i in k:
+        print '!Has op sign variable:', k
+        invalid = 2
+        break
+    if len(v) == 0:
+      all_vars.add(k)
+  for k,v in graph.iteritems():
+    for parent, dep in v:
+      for p in parent:
+        if p in all_vars:
+          all_vars.remove(p)
+  if invalid == 0 and len(all_vars) > 0:
+    invalid = 3
+    print '!Unconnected variables:', list(all_vars)
+
   print '\n' + str(len(user_defined_functions)) + ' user defined functions:'
   print user_defined_functions
-  return graph, attr, var_type
+  return graph, attr, var_type, invalid

@@ -68,7 +68,7 @@ functions = {
   "positive_infinity": "special value",
   "negative_infinity": "special value",
   "machine_precision": "special value",
-  "target": "log probability",   # returns the current value of the log probability accumulator
+  #"target": "log probability",   # returns the current value of the log probability accumulator
   "get_lp": "log probability",
   "<": "logical",
   "<=": "logical",

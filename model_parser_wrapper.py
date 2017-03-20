@@ -14,7 +14,15 @@ bracket_print = 0
 write = 1
 check = 0
 
-skipped_files = []
+# has the same name as functions and data types
+invalid_models_type1 = []
+invalid_graphs_type1 = []
+# has op sign in the var name
+invalid_models_type2 = []
+invalid_graphs_type2 = []
+# unconnected variables
+invalid_models_type3 = []
+invalid_graphs_type3 = []
 
 root = '/Users/emma/Projects/Bayesian/profiling/stan_bugs/code'
 files = []
@@ -26,7 +34,6 @@ for root, dirnames, filenames in os.walk(root):
 #  print f
 #print len(files)
 
-files = ['/Users/emma/Projects/Bayesian/profiling/stan_bugs/code/vol1/bones/bones.stan']
 output = '/Users/emma/Projects/Bayesian/profiling/stan_bugs/outputs/probgraph'
 
 if check == 1:
@@ -50,8 +57,17 @@ for modelfile in files:
   model.close()
   #for line in lines:
   #  print line
-  graph, attr, var_type = parser(lines, line_print, graph_print, for_print, if_print, bracket_print)
+  graph, attr, var_type, invalid= parser(lines, line_print, graph_print, for_print, if_print, bracket_print)
 
+  if invalid == 1:
+    invalid_models_type1.append(modelfile)
+    invalid_graphs_type1.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.probgraph')))
+  if invalid == 2:
+    invalid_models_type2.append(modelfile)
+    invalid_graphs_type2.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.probgraph')))
+  if invalid == 3:
+    invalid_models_type3.append(modelfile)
+    invalid_graphs_type3.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.probgraph')))
   
   print '\nGRAPH:'
   for k,v in graph.iteritems():
@@ -104,6 +120,13 @@ if check == 1:
     print i[0],'\t', i[1]
   print 'Number of not passed file: ', not_passed, 'out of', len(check_results), 'files, ', not_passed*1.0/len(check_results) 
 print 'Total file:', len(files)
-print 'Skipped files:', len(skipped_files)
-for i in skipped_files:
-  print i
+print '\nInvalid files:', len(invalid_models_type1) + len(invalid_models_type3) + len(invalid_models_type3)
+print '1. Invalid file, variables have the same name as data types or functions:'
+print invalid_models_type1
+print invalid_graphs_type1
+print '2. Invalid file, variables have op signs'
+print invalid_models_type2
+print invalid_graphs_type2
+print '3. Invalid file, unconnected variables'
+print invalid_models_type3
+print invalid_graphs_type3

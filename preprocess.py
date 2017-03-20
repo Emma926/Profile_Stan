@@ -8,6 +8,7 @@ def hasfunction(line):
       if i in functions:
         return True
     return False
+
 def preprocess(model, printresult = 0):
     # if a line does not have key words, = or ~, combine it with previous line
     lines = []
@@ -52,7 +53,7 @@ def preprocess(model, printresult = 0):
       replace('\'',' '). \
       replace('<',' ').replace('>', ' ').split()).split(' ')
       
-      def in_datatype(line):
+      def has_datatype(line):
         for i in data_type:
           if i in line:
             return True
@@ -64,31 +65,41 @@ def preprocess(model, printresult = 0):
         ind_b = line.index('>')
         line = line[0:ind_a] + line[ind_b+1:]
 
-      if ')' in line and not '(' in line:
+      if printresult == 1:
+        print line
+      open_c = line.count('(')
+      close_c = line.count(')')
+      if open_c < close_c:
+        if printresult == 1:
+          print 'END incomplete'
         incomplete_flag = 0
         lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
-      elif '(' in line and not ')' in line:
+      elif close_c > open_c:
+        if printresult == 1:
+          print 'BEGIN incomplete'
         incomplete_flag = 1
         lines.append(line)
       elif 'increment_log_prob' == newline[0]:
         lines.append('target = ' + line)  
       elif incomplete_flag == 1:
         lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
-      elif in_datatype(newline) \
+      elif has_datatype(newline) \
       or 'for' in newline \
       or 'if' in newline \
       or 'else' in newline \
+      or 'return' in newline \
       or '{' in newline \
       or '}' in newline \
       or '=' in newline \
-      or '~' in newline \
-      or hasfunction(newline) and not (line[0] in op_signs or lines[-1][-1] in op_signs):
+      or '~' in newline:
+      #or hasfunction(newline) and not (line[0] in op_signs or lines[-1][-1] in op_signs):
         lines.append(line)
   
       else:
         lines[-1] = lines[-1].strip('\n') + ' ' + line.strip(' ')
   
     if printresult == 1:
+      print '\nAfter preprocess: '
       for line in lines:
         print line
     return lines
