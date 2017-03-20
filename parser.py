@@ -256,16 +256,29 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       for i in range(len(newline)):
         if '[' in newline[i]:
           to_process.append(i)
+      if bracket_print == 1:
+        print to_process
       # declaration with [], [] and var are not connected
       # example: vector[T - 1] b, matrix[N, M] c
       # vector[n_occ_minus_1] cprob  = seq_cprob(gamma[:n_occ_minus_1]);
-      if len(to_process) > 0 and has_datatype(newline[to_process[0]]) and '[' in newline[to_process[0]] and newline[to_process[0]][-1] == ']':
+      # vector[K - max_y[i] + 1] lp; delete the inner []
+      if len(to_process) > 0 and has_datatype(newline[to_process[0]]) and newline[to_process[0]][-1] == ']':
         curr_statement = newline[to_process[0]]
         if '[' in newline[1]:
           ind = newline[1].index('[')
           name = newline[1][0:ind]
         else:
           name = newline[1]
+        # delete the inner []
+        while curr_statement.count('[') > 1:
+          index_a = curr_statement.index(']')
+          for j in range(index_a-1, -1, -1):
+            if curr_statement[j] == '[':
+              index_b = j
+              break
+          in_bracket = curr_statement[index_b + 1: index_a]
+          curr_statement = curr_statement[0:index_b] + curr_statement[index_a+1:]
+          
         # find the first ]
         index_a = curr_statement.index(']')
         # find the [ before the first ]
