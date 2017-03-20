@@ -24,7 +24,7 @@ invalid_graphs_type2 = []
 invalid_models_type3 = []
 invalid_graphs_type3 = []
 
-root = '/Users/emma/Projects/Bayesian/profiling/stan_bugs/code'
+root = '../code'
 files = []
 for root, dirnames, filenames in os.walk(root):
     for filename in fnmatch.filter(filenames, '*.stan'):
@@ -34,7 +34,7 @@ for root, dirnames, filenames in os.walk(root):
 #  print f
 #print len(files)
 
-output = '/Users/emma/Projects/Bayesian/profiling/stan_bugs/outputs/probgraph'
+output = '../outputs/probgraph'
 
 if check == 1:
   check_results = []
