@@ -68,7 +68,6 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       s = s.replace(i,' ')
     return s
   
-
   for line in lines:
     # ignore whatever can appear within []
     newline = " ".join(line.strip('\n').strip(' ').replace(';', ' '). \
@@ -121,7 +120,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       print newline
       if '[' in newline[0]:
         newline[0] = newline[0].replace('[', '').replace(']','')
-      if newline[0] in data_type and '{' in newline:
+      if newline[0] in data_type and '{' in line:
         #func_name = newline
         print 'function:', newline[1]
         user_defined_functions[newline[1]] = 'complex'
@@ -444,6 +443,6 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
     if len(integers) > 0 and max(integers) > 1 and flag1 == 0:
       graph[k].append((set([max(integers)]), "indexing"))
 
-  print '\nuser defined functions:'
+  print '\n' + str(len(user_defined_functions)) + ' user defined functions:'
   print user_defined_functions
   return graph, attr, var_type
