@@ -504,6 +504,12 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
   if invalid == 0 and len(all_vars) > 0:
     invalid = 3
     print '!Unconnected variables:', list(all_vars)
+    # delete unconnected variables
+    for v in all_vars:
+      graph.pop(v, None)
+      attr.pop(v, None)
+      var_type.pop(v, None)
+
   
 
   print '\n' + str(len(user_defined_functions)) + ' user defined functions:'
