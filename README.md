@@ -1,5 +1,5 @@
 # Graphical Model Profiling Tools
-This tool converts stan model file (left) into variable dependencies as graph structure (right).
+This tool converts stan model file (left) into variable dependencies as graph structure, and visualize the graph (right).
 ![alt text](pic/Graph.png "Variable dependency graph")
 
 ## Getting Start
