@@ -1,5 +1,6 @@
 # Graphical Model Profiling Tools
 This tool converts stan model file as input, output variable dependencies as graph structure.
+![alt text](pic/Graph.png "Variable dependency graph")
 
 ## Getting Start
 modify model_parser_wrapper.py as needed, and run
