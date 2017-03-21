@@ -1,7 +1,8 @@
 # Take the output and paste in http://www.webgraphviz.com
 import json
+import sys
 
-graphfile = '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph/js_super_indran.probgraph'
+graphfile = sys.argv[1]
 
 with open(graphfile) as fin:
    [graph, attr, var_type] = json.load(fin)
