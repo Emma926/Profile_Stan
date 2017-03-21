@@ -66,7 +66,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
   # if line is a str, there are problems if line contains data type words, like perintc etc.
   def has_datatype(line):
     newline = line[:]
-    newline = replace_op_signs(newline).split(' ') 
+    newline = " ".join(replace_op_signs(newline).replace(']',' ').replace('[', ' ').split()).split(' ')
     for i in data_type:
       if i in newline:
         return True
@@ -260,13 +260,15 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
         if '[' in newline[i]:
           to_process.append(i)
       if bracket_print == 1:
-        print to_process
+        print 'bracket words:', to_process
       # declaration with [], [] and var are not connected
       # example: vector[T - 1] b, matrix[N, M] c
       # vector[n_occ_minus_1] cprob  = seq_cprob(gamma[:n_occ_minus_1]);
       # vector[K - max_y[i] + 1] lp; delete the inner []
       if len(to_process) > 0 and has_datatype(newline[to_process[0]]) and newline[to_process[0]][-1] == ']':
         curr_statement = newline[to_process[0]]
+        if bracket_print == 1:
+          print 'bracket of declaration:', curr_statement
         if '[' in newline[1]:
           ind = newline[1].index('[')
           name = newline[1][0:ind]
@@ -298,7 +300,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       
       
       if bracket_print == 1:
-        print newline, to_process
+        print 'bracket', newline, to_process
       # bf[af]
       # or a[b[c]], a[b[c],d[e]], etc
       # vector[N] a[M]
@@ -307,7 +309,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
         while ']' in curr_statement:
         
           if bracket_print == 1:
-            print curr_statement
+            print 'current bracket:', curr_statement
           # find the first ]
           index_a = curr_statement.index(']')
           # find the [ before the first ]
