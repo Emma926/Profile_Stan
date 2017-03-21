@@ -1,12 +1,25 @@
 # Graphical Model Profiling Tools
-This tool converts stan model file as input, output variable dependencies as graph structure.
+This tool converts stan model file (left) into variable dependencies as graph structure (right).
 ![alt text](pic/Graph.png "Variable dependency graph")
 
 ## Getting Start
-modify model_parser_wrapper.py as needed, and run
+Put your stan files in code/, and git clone this repo such that your working directory contains both code/ and Profile_Stan/.
+'''
+mkdir outputs
+mkdir outputs/probgraph
+'''
+
+and run
 '''
 python model_parser_wrapper.py
 '''
+
+To visualize the graph, run
+
+'''
+python to_graphviz.py ../outputs/probgraph/[the graph to visualize].probgraph
+'''
+
 ## Probabilistic Graph Data Structure
 parse_model.py stores probability graph ending with .probgraph.
 It streams graph into a json file.
@@ -50,4 +63,4 @@ where
 
 Emma Wang
 Originally on Feb 24th, 2017,
-Updated on March 17th, 2017.
+Updated on March 21th, 2017.
