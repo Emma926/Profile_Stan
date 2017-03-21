@@ -4,21 +4,21 @@ This tool converts stan model file (left) into variable dependencies as graph st
 
 ## Getting Start
 Put your stan files in code/, and git clone this repo such that your working directory contains both code/ and Profile_Stan/.
-'''
+~~~
 mkdir outputs
 mkdir outputs/probgraph
-'''
+~~~
 
 and run
-'''
+~~~
 python model_parser_wrapper.py
-'''
+~~~
 
 To visualize the graph, run
 
-'''
+~~~
 python to_graphviz.py ../outputs/probgraph/[the graph to visualize].probgraph
-'''
+~~~
 
 ## Probabilistic Graph Data Structure
 parse_model.py stores probability graph ending with .probgraph.
