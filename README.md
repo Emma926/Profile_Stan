@@ -19,6 +19,7 @@ To visualize the graph, run
 ~~~
 python to_graphviz.py ../outputs/probgraph/[the graph to visualize].probgraph
 ~~~
+and paste the results to http://www.webgraphviz.com.
 
 ## Probabilistic Graph Data Structure
 parse_model.py stores probability graph ending with .probgraph.

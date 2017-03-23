@@ -17,8 +17,29 @@ for d in graph_dirs:
 print "# of Models: ", len(files)
 
 names = []
+
+# summary
+nodes = []
+edges = []
+dependencies = []
+layers = []
+
+# types of variables
 params = []
 dataparams = []
+
+# computations: basic/complex
+basic_comp = []
+complex_comp = []
+
+# computations: int/real/vector/matrix
+level = ['matrix', 'vector', 'real', 'int']
+var_type_map = {'not declared': 'real', 'int':'int','real':'real', 'matrix':'matrix', 'cov_matrix':'matrix', 'corr_matrix':'matrix', 'cholesky_factor_cov':'matrix', 'cholesky_factor_corr':'matrix', 'vector':'vector', 'simplex':'vector', 'unit_vector':'vector', 'ordered':'vector', 'positive_ordered':'vector', 'row_vector':'vector'}
+computations = {'matrix':[], 'vector':[], 'real':[], 'int':[]}
+
+# distributions
+discrete = []
+continuous = []
 
 for graphfile in files:
     with open(graphfile) as fin:
@@ -36,7 +57,91 @@ for graphfile in files:
 
     params.append(param_c)
     dataparams.append(data_c)
+    
+    edge_c = 0
+    depend_c = 0
+    basic_c = 0
+    complex_c = 0
+    dis_c = 0
+    con_c = 0
+    ty_c = {'matrix':0, 'vector':0, 'real':0, 'int':0}
+    leaves = set()
+    for node, v in graph.iteritems():
+      # initialize the leaves as all nodes
+      leaves.add(node)
+      for parents, dep in v:
+        depend_c += 1
+        edge_c += len(parents)
+        t = []
+        if dep == 'discrete':
+          dis_c += 1
+          continue
+        elif dep == 'continuous':
+          con_c += 1
+          continue
+        if dep == 'read' or dep == 'basic':
+          basic_c += 1
+        if dep == 'complex':
+          complex_c += 1
+        for p in parents:
+          if str(p).isdigit():
+            t.append(1)
+            continue
+          t.append(level.index(var_type_map[var_type[p]]))
+        t.append(level.index(var_type_map[var_type[node]]))
+        ty_c[level[min(t)]] += 1
+    discrete.append(dis_c)
+    continuous.append(con_c)
+    for k,v in ty_c.iteritems():
+      computations[k].append(v)
+    basic_comp.append(basic_c)
+    complex_comp.append(complex_c)
+    nodes.append(len(graph))
+    edges.append(edge_c)
+    dependencies.append(depend_c)
 
-print names
-print params
-print dataparams
+    # remove the nodes that have children
+    # remain nodes are leaves
+    for node, v in graph.iteritems():
+      for parents, dep in v:
+        for p in parents:
+          if p in leaves:
+            leaves.remove(p)
+    # bfs
+    queue = []
+    node_depth = {}
+    for i in leaves:
+      queue.append((i,1))
+      node_depth[i] = 1
+    while len(queue) > 0:
+      node, l = queue[0]
+      del queue[0]
+      for parents, dep in graph[node]:
+        for p in parents:
+          if str(p).isdigit():
+            continue
+          if p in node_depth:
+            d = node_depth[p]
+          else:
+            d = 0
+          queue.append((p, max([d, l+1])))
+          node_depth[p] = max([d, l+1])
+    max_depth = 0
+    for k,v in node_depth.iteritems():
+      if v > max_depth:
+        max_depth = v
+    layers.append(max_depth)
+          
+print 'names = ' + str(names)
+print 'nodes = ' + str(nodes)
+print 'edges = ' + str(edges)
+print 'layers = ' + str(layers)
+print 'dependencies = ' + str(dependencies)
+print 'params = ' + str(params)
+print 'dataparams = ' + str(dataparams)
+print 'basic_comp = ' + str(basic_comp)
+print 'complex_comp = ' + str(complex_comp)
+for k in level:
+  print k + '_comp = ' + str(computations[k])
+print 'discrete = ' + str(discrete)
+print 'continuous = ' + str(continuous)
