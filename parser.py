@@ -426,8 +426,11 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
           for k,v in graph.iteritems():
             if k in newline and k <> name:
               parents.append(k)
-          if "~" in newline:
-            parents = []
+          if '~' in newline:
+            ind = newline.index('~')
+            print newline
+            if newline[ind+1] in parents:
+              del parents[parents.index(newline[ind+1])] 
           add_to_graph(name, parents, 'not declared', 'not declared', t, '9')
       if len(if_stack) > 0:
         parents = []
