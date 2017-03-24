@@ -25,7 +25,7 @@ for node, v in graph.iteritems():
         edges.append(p + '->' + node)
         depends.append(depend)
 
-s = 'Digraph variables {\nnode [shape=circle,fixedsize=true,width=0.9];'
+s = 'Digraph variables {\nnode [shape=circle,width=0.9];'
 for i in param_node:
   s += ' ' + i + ';'
 s += '\nnode [shape=box];'
