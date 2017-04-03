@@ -1,5 +1,6 @@
 import os
 import json
+import numpy
 
 graph_dirs = [
   '/Users/emma/Projects/Bayesian/profiling/stan_ARM/outputs/probgraph',
@@ -23,10 +24,13 @@ nodes = []
 edges = []
 dependencies = []
 layers = []
+avg_width = []
 
 # types of variables
 params = []
 dataparams = []
+otherparams = []
+indexedparams = [] # parameters whose numbers are governed by int data params
 
 # computations: basic/complex
 basic_comp = []
@@ -78,7 +82,7 @@ def bfs(leaves, graph):
             d = 0
           queue.append((p, max([d, l+1])))
           node_depth[p] = max([d, l+1])
-    max_depth = 0
+    max_depth = 1
     for k,v in node_depth.iteritems():
       if v > max_depth:
         max_depth = v
@@ -96,14 +100,18 @@ for graphfile in files:
 
     param_c = 0
     data_c = 0
+    other_c = 0
     for k,v in attr.iteritems():
       if 'parameter' in v:
         param_c += 1
       elif 'data' in v:
         data_c += 1
+      else:
+        other_c += 1
 
     params.append(param_c)
     dataparams.append(data_c)
+    otherparams.append(other_c)
     
     edge_c = 0
     depend_c = 0
@@ -111,6 +119,8 @@ for graphfile in files:
     complex_c = 0
     dis_c = 0
     con_c = 0
+    indexed_set = set()
+    
     ty_c = {'matrix':0, 'vector':0, 'real':0, 'int':0}
     leaves = set()
     for node, v in graph.iteritems():
@@ -130,6 +140,8 @@ for graphfile in files:
           basic_c += 1
         if dep == 'complex':
           complex_c += 1
+        if dep == 'indexing' and parents[0] in var_type and var_type[parents[0]] == 'int':
+          indexed_set.add(node)
         for p in parents:
           if str(p).isdigit():
             t.append(1)
@@ -137,6 +149,7 @@ for graphfile in files:
           t.append(level.index(var_type_map[var_type[p]]))
         t.append(level.index(var_type_map[var_type[node]]))
         ty_c[level[min(t)]] += 1
+    indexedparams.append(len(indexed_set))
     discrete.append(dis_c)
     continuous.append(con_c)
     for k,v in ty_c.iteritems():
@@ -167,21 +180,50 @@ for graphfile in files:
     print iscyclic
     if iscyclic:
       layers.append(99999)
-    
     if not iscyclic:
       # max depth by bfs
       layers.append(bfs(leaves, graph))
+    if layers[-1] == 0:
+      avg_width.append(nodes[-1])
+    elif layers[-1] == 99999:
+      avg_width.append(0) 
+    else:
+      avg_width.append(nodes[-1] / layers[-1]) 
           
+mtx = [nodes, params, dataparams, otherparams, indexedparams, edges, dependencies, numpy.add(basic_comp, complex_comp), basic_comp, complex_comp, numpy.add(discrete, continuous), discrete, continuous]
+labels = ['nodes', 'params', 'dataparams', 'otherparams', 'indexedparams','edges', 'dependencies', 'computations', 'basic_comp', 'complex_comp', 'distributions', 'discrete', 'continuous']
 print 'names = ' + str(names)
 print 'nodes = ' + str(nodes)
 print 'edges = ' + str(edges)
 print 'layers = ' + str(layers)
+print 'avg_width = ' + str(avg_width)
 print 'dependencies = ' + str(dependencies)
 print 'params = ' + str(params)
 print 'dataparams = ' + str(dataparams)
+print 'otherparams = ' + str(otherparams)
+print 'indexedparams = ' + str(indexedparams)
 print 'basic_comp = ' + str(basic_comp)
 print 'complex_comp = ' + str(complex_comp)
+print 'computations = ' + str(numpy.add(basic_comp, complex_comp))
 for k in level:
   print k + '_comp = ' + str(computations[k])
+  mtx.append(computations[k])
+  labels.append(k)
+print 'distributions = ' + str(numpy.add(discrete, continuous))
 print 'discrete = ' + str(discrete)
 print 'continuous = ' + str(continuous)
+mtx.append(layers)
+labels.append('layers')
+mtx = numpy.array(mtx)
+print mtx.shape
+corr = numpy.corrcoef(mtx)
+s = '['
+for i in range(len(labels)):
+  s += '['
+  for j in range(len(labels)):
+    s += str(corr[i][j]) + ','
+  s += '],\n'
+s += ']\n'
+print s
+print labels
+
