@@ -3,13 +3,15 @@ import os
 import fnmatch
 from parser import *
 from preprocess import *
+from read_data import *
+from data_file import *
 
 # debugging flags
-line_print = 1 
+line_print = 0 
 graph_print = 1
 for_print = 0
 if_print = 0
-bracket_print = 1
+bracket_print = 0
 
 write = 1
 check = 0
@@ -38,43 +40,54 @@ for root, dirnames, filenames in os.walk(root):
 #  print f
 #print len(files)
 
-output = '../outputs/probgraph'
+output = '../outputs/dynamic_graph'
 
 if check == 1:
   check_results = []
   not_passed = 0
 
+files = ['../code/Ch.19/radon.stan']
+
 for modelfile in files:
 
   print modelfile
+  modelname = modelfile.split('/')[-1].split('.')[0]
+  if not modelname in data_file_map:
+    continue
+  data_file_name = os.path.join(modelfile.replace(modelfile.split('/')[-1], ''), data_file_map[modelname])
+  print data_file_name
+
   model = open(modelfile,'r')
   
+  
   if check == 1:
-    if not os.path.isfile(modelfile.replace('.stan', '.probgraph')):
+    if not os.path.isfile(modelfile.replace('.stan', '.dygraph')):
       continue
-    with open(modelfile.replace('.stan', '.probgraph')) as fin:
+    with open(modelfile.replace('.stan', '.dygraph')) as fin:
          [chk_graph, chk_attr, chk_var_type] = json.load(fin)
     
-  
-
   lines = preprocess(model)
   model.close()
   #for line in lines:
   #  print line
-  graph, attr, var_type, invalid= parser(lines, line_print, graph_print, for_print, if_print, bracket_print)
+  data_list = generate_data_list(data_file_name)
+  #print data_list
+  graph, attr, var_type, invalid= parser(lines, data_list, line_print, graph_print, for_print, if_print, bracket_print)
+  #dy_graph, dy_attr, dy_var_type = generate_dynamic_graph(data_list, graph, attr, var_type)
+
 
   if invalid == 1:
     invalid_models_type1.append(modelfile)
-    invalid_graphs_type1.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.probgraph')))
+    invalid_graphs_type1.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.dygraph')))
   if invalid == 2:
     invalid_models_type2.append(modelfile)
-    invalid_graphs_type2.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.probgraph')))
+    invalid_graphs_type2.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.dygraph')))
   if invalid == 3:
     invalid_models_type3.append(modelfile)
-    invalid_graphs_type3.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.probgraph')))
+    invalid_graphs_type3.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.dygraph')))
   if invalid == 4:
     invalid_models_type4.append(modelfile)
-    invalid_graphs_type4.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.probgraph')))
+    invalid_graphs_type4.append(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.dygraph')))
   
   print '\nGRAPH:'
   for k,v in graph.iteritems():
@@ -82,11 +95,11 @@ for modelfile in files:
     for p, dep in v:
       parents.append((list(p), dep))
     graph[k] = parents
-    print k, attr[k], var_type[k], graph[k]
+  #  print k, attr[k], var_type[k], graph[k]
   print len(graph), len(attr), len(var_type)
 
   if write == 1:
-    with open(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.probgraph')), 'w') as fout:
+    with open(os.path.join(output, modelfile.split('/')[-1].replace('.stan', '.dygraph')), 'w') as fout:
       json.dump([graph, attr, var_type], fout)
   
   if check == 1:

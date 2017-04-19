@@ -5,7 +5,7 @@ data_type = ['cov_matrix', 'corr_matrix', 'cholesky_factor_cov', 'cholesky_facto
 dependencies = set(['indexing', 'read', 'basic', 'complex', 'discrete', 'continuous'])
 op_signs = ['(', ')', '%', '^', ':', ',', '.*', './', '+=', '-=', '/=', '*=', '+', '-', '/', '*', '<=', '<', '>=', ">", '==', '!=', '!', '&&', '||', '\\']
 
-def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
+def parser(lines, data_list, line_print, graph_print, for_print, if_print, bracket_print):
 
   graph = {}
   attr = {}
@@ -23,12 +23,42 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
   user_defined_functions = {}
 
   def add_to_graph(node, parents, att, var_ty, dependency, debug = ''):
-    if not node in graph:
+    multi = 0
+    word = node
+    for i in range(len(parents)):
+      word += '.0'
+    if word in graph:
+      multi = 1
+
+    if multi == 0 and dependency == 'indexing':
+      indexes = []
+      for p in parents:
+        if p in data_list and len(data_list[p]) == 1:
+          indexes.append(int(data_list[p][0]))
+        elif p.isidigit():
+          indexes.append(int(p))
+      # generate nodes with corresponding indexes
+      nodes = [node]
+      for i in indexes:
+        new_nodes = []
+        for j in range(i):
+          for n in nodes:
+            new_nodes.append(n + '.' + str(j))
+        nodes = new_nodes 
+      if graph_print  == 1:
+        print 'graph multiple nodes', debug, node, int(data_list[parents[0]][0]), parents
+      for i in nodes:
+        graph[i] = []
+        attr[i] = att
+        var_type[i] = var_ty 
+      return
+
+    if not node in graph and multi == 0:
       graph[node] = []
       attr[node] = att
       var_type[node] = var_ty
       if graph_print == 1:
-        print 'graph', debug, node, att, var_ty
+        print 'graph', debug, node, att, var_ty, parents
     if not dependency in dependencies:
       return
     flag = 0
@@ -36,10 +66,11 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
       if p == set(parents) and d == dependency:
         flag = 1
         break
+        
     if flag == 0:
       graph[node].append((set(parents), dependency))
     if graph_print == 1:
-        print 'graph', debug, node, parents, dependency
+        print 'graph', debug, node, parents, dependency, parents
 
   # find distribution or function names, return type
   def find_keywords(line): 
@@ -486,6 +517,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
     if len(integers) > 0 and max(integers) > 1 and flag1 == 0:
       graph[k].append((set([str(max(integers))]), "indexing"))
 
+  return
   # check the graph
   invalid = 0
   all_vars = set()
@@ -506,7 +538,7 @@ def parser(lines, line_print, graph_print, for_print, if_print, bracket_print):
         if p in all_vars:
           all_vars.remove(p)
     if not var_type[k] in data_type and not var_type[k] == 'not declared':
-      print 'No such data type:', var_type[k]
+      print 'No such data type:', var_type[k], k
       invalid = 4
   if invalid == 0 and len(all_vars) > 0:
     invalid = 3
