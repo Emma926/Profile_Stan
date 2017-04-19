@@ -142,6 +142,8 @@ for graphfile in files:
           complex_c += 1
         if dep == 'indexing' and parents[0] in var_type and var_type[parents[0]] == 'int':
           indexed_set.add(node)
+        if dep == 'indexing':
+          continue
         for p in parents:
           if str(p).isdigit():
             t.append(1)
