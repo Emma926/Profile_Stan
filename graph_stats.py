@@ -8,7 +8,8 @@ graph_dirs = [
   '/Users/emma/Projects/Bayesian/profiling/stan_BPA/outputs/probgraph',
   '/Users/emma/Projects/Bayesian/profiling/stan_bugs/outputs/probgraph',
   '/Users/emma/Projects/Bayesian/profiling/stan_knitr/outputs/probgraph',
-  '/Users/emma/Projects/Bayesian/profiling/stan_misc/outputs/probgraph'
+  '/Users/emma/Projects/Bayesian/profiling/stan_misc/outputs/probgraph',
+  '/Users/emma/Projects/Bayesian/profiling/stan_stancon/outputs/probgraph'
 ]
 files = []
 for d in graph_dirs:
@@ -45,48 +46,23 @@ computations = {'matrix':[], 'vector':[], 'real':[], 'int':[]}
 discrete = []
 continuous = []
 
-def _dfs(curr_node, graph, visiting):  
-  if curr_node in visiting:
-    return True
-  if not curr_node in graph:
-    return False
-  visiting.add(curr_node)
+def _dfs(curr_node, graph, leaves, visit):  
+  if curr_node in visit:
+    return 0
+  if curr_node in leaves:
+    return 1
+  visit.add(curr_node)
+  l = []
   for n in graph[curr_node]:
-    if _dfs(n, graph, visiting) == True:
-      return True
-  visiting.remove(curr_node)
-  return False
+    l.append(_dfs(n, graph, leaves, visit))
+  visit.remove(curr_node)
+  return 1 + max(l)
 
-def dfs(leaves, graph):
-  for n in leaves:
-    if _dfs(n, graph, set()) == True:
-      return True
-  return False
-
-def bfs(leaves, graph):
-    queue = []
-    node_depth = {}
-    for i in leaves:
-      queue.append((i,1))
-      node_depth[i] = 1
-    while len(queue) > 0:
-      node, l = queue[0]
-      del queue[0]
-      for parents, dep in graph[node]:
-        for p in parents:
-          if str(p).isdigit():
-            continue
-          if p in node_depth:
-            d = node_depth[p]
-          else:
-            d = 0
-          queue.append((p, max([d, l+1])))
-          node_depth[p] = max([d, l+1])
-    max_depth = 1
-    for k,v in node_depth.iteritems():
-      if v > max_depth:
-        max_depth = v
-    return max_depth
+def dfs(start, leaves, graph):
+  l = []
+  for n in start:
+    l.append(_dfs(n, graph, leaves, set()))
+  return max(l)
 
 
 c = 0
@@ -164,33 +140,26 @@ for graphfile in files:
 
     # remove the nodes that have children
     # remain nodes are leaves
+    start = set()
     for node, v in graph.iteritems():
+      if len(v) == 0 or len(v) == 1 and len(parents) == 0:
+        start.add(node)
       for parents, dep in v:
         for p in parents:
           if p in leaves:
             leaves.remove(p)
-
-    # check whether the graph has loops or not
+          if str(p).isdigit():
+            start.add(p)
     # dfs    
-    new_graph = {}
-    for node,v in graph.iteritems():
-      new_graph[node] = set()
+    reverse_graph = {}
+    for node, v in graph.iteritems():
       for parents, dep in v:
         for p in parents:
-          new_graph[node].add(p)
-    iscyclic = dfs(leaves, new_graph)
-    print iscyclic
-    if iscyclic:
-      layers.append(99999)
-    if not iscyclic:
-      # max depth by bfs
-      layers.append(bfs(leaves, graph))
-    if layers[-1] == 0:
-      avg_width.append(nodes[-1])
-    elif layers[-1] == 99999:
-      avg_width.append(0) 
-    else:
-      avg_width.append(nodes[-1] / layers[-1]) 
+          if not p in reverse_graph:  
+            reverse_graph[p] = set()
+          reverse_graph[p].add(node)
+    layers.append(dfs(start, leaves, reverse_graph))
+    avg_width.append(nodes[-1] / layers[-1]) 
           
 mtx = [nodes, params, dataparams, otherparams, indexedparams, edges, dependencies, numpy.add(basic_comp, complex_comp), basic_comp, complex_comp, numpy.add(discrete, continuous), discrete, continuous]
 labels = ['nodes', 'params', 'dataparams', 'otherparams', 'indexedparams','edges', 'dependencies', 'computations', 'basic_comp', 'complex_comp', 'distributions', 'discrete', 'continuous']
@@ -206,12 +175,12 @@ print 'otherparams = ' + str(otherparams)
 print 'indexedparams = ' + str(indexedparams)
 print 'basic_comp = ' + str(basic_comp)
 print 'complex_comp = ' + str(complex_comp)
-print 'computations = ' + str(numpy.add(basic_comp, complex_comp))
+print 'computations = ' + str(list(numpy.add(basic_comp, complex_comp)))
 for k in level:
   print k + '_comp = ' + str(computations[k])
   mtx.append(computations[k])
   labels.append(k)
-print 'distributions = ' + str(numpy.add(discrete, continuous))
+print 'distributions = ' + str(list(numpy.add(discrete, continuous)))
 print 'discrete = ' + str(discrete)
 print 'continuous = ' + str(continuous)
 mtx.append(layers)
