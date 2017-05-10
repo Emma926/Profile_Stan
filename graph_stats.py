@@ -37,6 +37,8 @@ indexedparams = [] # parameters whose numbers are governed by int data params
 basic_comp = []
 complex_comp = []
 
+indexing = []
+
 # computations: int/real/vector/matrix
 level = ['matrix', 'vector', 'real', 'int']
 var_type_map = {'not declared': 'real', 'int':'int','real':'real', 'matrix':'matrix', 'cov_matrix':'matrix', 'corr_matrix':'matrix', 'cholesky_factor_cov':'matrix', 'cholesky_factor_corr':'matrix', 'vector':'vector', 'simplex':'vector', 'unit_vector':'vector', 'ordered':'vector', 'positive_ordered':'vector', 'row_vector':'vector'}
@@ -96,6 +98,7 @@ for graphfile in files:
     dis_c = 0
     con_c = 0
     indexed_set = set()
+    index_c = 0
     
     ty_c = {'matrix':0, 'vector':0, 'real':0, 'int':0}
     leaves = set()
@@ -119,6 +122,7 @@ for graphfile in files:
         if dep == 'indexing' and parents[0] in var_type and var_type[parents[0]] == 'int':
           indexed_set.add(node)
         if dep == 'indexing':
+          index_c += 1
           continue
         for p in parents:
           if str(p).isdigit():
@@ -127,6 +131,7 @@ for graphfile in files:
           t.append(level.index(var_type_map[var_type[p]]))
         t.append(level.index(var_type_map[var_type[node]]))
         ty_c[level[min(t)]] += 1
+    
     indexedparams.append(len(indexed_set))
     discrete.append(dis_c)
     continuous.append(con_c)
@@ -137,6 +142,7 @@ for graphfile in files:
     nodes.append(len(graph))
     edges.append(edge_c)
     dependencies.append(depend_c)
+    indexing.append(index_c)
 
     # remove the nodes that have children
     # remain nodes are leaves
@@ -173,8 +179,9 @@ print 'params = ' + str(params)
 print 'dataparams = ' + str(dataparams)
 print 'otherparams = ' + str(otherparams)
 print 'indexedparams = ' + str(indexedparams)
-print 'basic_comp = ' + str(basic_comp)
-print 'complex_comp = ' + str(complex_comp)
+#print 'basic_comp = ' + str(basic_comp)
+#print 'complex_comp = ' + str(complex_comp)
+print 'indexing = ', str(indexing)
 print 'computations = ' + str(list(numpy.add(basic_comp, complex_comp)))
 for k in level:
   print k + '_comp = ' + str(computations[k])
@@ -197,4 +204,13 @@ for i in range(len(labels)):
 s += ']\n'
 print s
 print labels
+
+size = list(numpy.add(nodes, dependencies))
+ind = size.index(min(size))
+size[ind] = 9999
+
+while indexedparams[ind] == 0:
+  ind = size.index(min(size))
+  size[ind] = 9999
+print names[ind], indexedparams[ind]
 
